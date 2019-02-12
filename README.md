@@ -15,5 +15,6 @@ make clean
 ```
 
 # 🍊PS:
+Making something is but a lifestyle.
 It looks like a bootloader or diskloader rather than an OS. 
 Who knows. 🙂
