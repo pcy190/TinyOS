@@ -9,6 +9,29 @@ buffer dq 0
 [bits 32]
 section .text
 
+;----------------- put_str ----------------------
+;input : zero-string in the stack
+;print string
+global put_str
+put_str:
+	push ebx
+	push ecx
+	xor ecx,ecx
+	mov ebx, [esp + 12]
+.parse_char:
+	mov cl, [ebx]
+	cmp cl,0			; 0 symbols the end of str
+	jz .str_over
+	push ecx
+	call put_char
+	add esp,4
+	inc ebx
+	jmp .parse_char
+.str_over:
+	pop ecx
+	pop ebx
+	ret
+
 
 ; ----------------- put_char ---------------------
 ;input : char in stack 
@@ -128,8 +151,62 @@ put_char:
 
 
 
-;------------------ putint ----------------------
+;------------------ put_int ----------------------
 ;input : number in stack 
-;print HEX number
-global putint
-putint:
+;print HEX format number without prefix "0X"
+global put_int
+put_int:
+	pushad
+	mov ebp,esp
+	mov eax, [ebp+4*9]
+	mov edx,eax
+	
+	mov edi,7
+	mov ebx,buffer
+	mov ecx,8
+
+.num2char:
+	and edx,0xF
+	cmp edx,9
+	jg .num_A2F
+	add edx, '0'
+	jmp .continue
+.num_A2F:
+	sub edx,10
+	add edx, 'A'
+
+.continue:
+	mov [ebx+edi], edx
+	dec edi
+	shr eax, 4
+    mov edx, eax 
+	loop .num2char
+
+.print_hex_char:
+	xor edi,edi			; original edi is -1 , set it 0
+	xor ecx,ecx
+.skip_prefix_0:
+	cmp edi,8
+	je .full0
+
+.go_on_skip:
+	mov cl,[buffer+edi]
+	inc edi
+	cmp cl, '0'
+	je .skip_prefix_0
+	dec edi
+	jmp .print_all_num
+
+.full0:
+	mov cl,'0'
+
+.print_all_num:
+	push ecx
+	call put_char
+	add esp,4
+	inc edi
+	mov cl,[buffer+edi]
+	cmp edi,8
+	jl .print_all_num
+	popad
+	ret

@@ -1,2 +1,4 @@
-bochs.out
-mbr.bin
+*.out
+*.bin
+*.o
+.vscode

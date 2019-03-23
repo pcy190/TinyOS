@@ -62,7 +62,7 @@ print_loop:
     mov cx,4                        ;sector number to read
 
     call rd_disk
-    jmp LOADER_BASE_ADDR
+    jmp LOADER_BASE_ADDR + 0x300
 
 ;-------------
 

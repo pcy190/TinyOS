@@ -2,7 +2,7 @@
 #define __LIB_KERNEL_PRINT_H
 #include "stdint.h"
 void put_char(uint8_t char_asci);
-//void putstr(char* message);
-//void putint(uint32_t num);	 // print with HEX format
+void put_str(char* message);
+void put_int(uint32_t num);	 // print with HEX format
 #endif
 

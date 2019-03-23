@@ -1,9 +1,5 @@
 %include"include/boot.inc"
 section loader vstart=LOADER_BASE_ADDR
-
-LOADER_STACK_TOP equ LOADER_BASE_ADDR
-jmp loader_start
-
 ; build GDT info & other info
 GDT_BASE:
     dd 0x00000000
@@ -27,22 +23,18 @@ SELECTOR_CODE equ (0x0001<<3) + TI_GDT + RPL0 ; CODE_DESC index + TI_GDT + RPL0
 SELECTOR_DATA equ (0x0002<<3) + TI_GDT + RPL0
 SELECTOR_VIDEO equ (0x0003<<3) + TI_GDT + RPL0
 
+    ; totally 256 bit
+    ; here addr: 0x900+0x200=0xb00  (VA)       
+total_mem_bytes dd 0					 ; memory  capacity ,based on byte
 
-gdt_ptr:
+gdt_ptr
     dw GDT_LIMIT
     dd GDT_BASE
 
 
-    ; totally 256 bit
-    ; here addr: 0x900+0x200=0xb00  (VA)
-total_mem_bytes dd 0                          ; memory  capacity ,based on byte
+      
 ards_buf times 244 db 0
 ards_num dw 0                                 ; reocrd ards number
-
-
-String:
-    db "loader started"
-String_end:
 
 
 
@@ -50,7 +42,7 @@ loader_start:
     ; =======================================================
     ; Print string before Protect mode
     mov ecx,(String_end-String)
-      xor bx,bx
+    xor ebx,ebx
     mov bx,0xA0
     xor si,si
     push ds
@@ -71,6 +63,26 @@ print_loop:
     inc si
     loop print_loop
     pop ds
+    ;---------------------------------------------------------
+    ;set_cursor:
+    ; set cursor as BX value
+    ; set high 8 bit
+    mov bx, 240
+    mov dx, 0x03d4
+    mov al, 0x0e
+    out dx, al
+    mov dx, 0x03d5            ; write port 0x3d5 to get/write cursor pos
+    mov al, bh
+    out dx, al
+    ;set low 8 bit  
+    mov dx, 0x03d4
+    mov al, 0x0f
+    out dx, al
+    mov dx, 0x03d5
+    mov al, bl
+    out dx, al
+    ;--------------------------------------------------------
+
     ; ========================================================
     ; Probe_memory
     ; ------------  int 15h eax = 0000E820h ,edx = 534D4150h ('SMAP')   ------------
@@ -147,8 +159,8 @@ print_loop:
 
 
 
-                                              ; Enable and Enter Protect Mode
-                                              ; ----------Open A20----------
+; Enable and Enter Protect Mode
+; ----------Open A20----------
 in al,0x92
 or al,00000010B
 out 0x92,al
@@ -208,7 +220,7 @@ sgdt [gdt_ptr]
 mov ebx, [gdt_ptr + 2]
 or dword [ebx+ 0x18 + 4], 0xc0000000
 
-and dword [gdt_ptr + 2], 0xc0000000
+add dword [gdt_ptr + 2], 0xc0000000
 
 add esp, 0xc0000000
 
@@ -224,13 +236,14 @@ mov cr0, eax
 ; reload gdt after enable PageTable
 lgdt [gdt_ptr]
 
-
 ; flush pipeline, not necessary
-    jmp SELECTOR_CODE:enter_kernel
+   jmp SELECTOR_CODE:enter_kernel
 enter_kernel:
     call kernel_init
 	mov esp, 0xc009f000
+
 	jmp KERNEL_ENTRY_POINT
+    ;jmp 0x1500
 
 ;=====================================================================================
 ;=====================================================================================
@@ -241,12 +254,12 @@ kernel_init:
 	xor ebx, ebx	; program header address
 	xor ecx, ecx	; number of program header
 	xor edx, edx	; size of program header, e.g. e_phentsize
-	mov dx, [KERNEL_BIN_BASE_ADDR+42]	; e_phentsize
+	mov dx, [KERNEL_BIN_BASE_ADDR + 42]	; e_phentsize
 	mov ebx, [KERNEL_BIN_BASE_ADDR + 28]	;e_phoff, e.g. the first program header's offset in the file
 	add ebx, KERNEL_BIN_BASE_ADDR
 	mov cx, [KERNEL_BIN_BASE_ADDR + 44]		;e_phnum, e.g. number of program header
 .each_segment_loop:
-   cmp byte [ebx + 0], PT_NULL		  ; this program header doesn't use if p_type== PT_NULL,
+   cmp byte [ebx + 0], PT_NULL		  ; this program  header doesn't use if p_type== PT_NULL,
    je .PTNULL
 
    ;call memcpy(dst,src,size)
@@ -270,16 +283,11 @@ memcpy:
     push ebp
     mov ebp, esp
     push ecx    ;backup
-    push edi
-    push esi
-
     mov edi, [ebp+8]    ;dst 
     mov esi, [ebp+12]   ;src
     mov ecx, [ebp+16]   ;size
     rep movsb   ;copy
 
-    pop esi     ;recover
-    pop edi
     pop ecx
     pop ebp
     ret
@@ -322,7 +330,7 @@ setup_page:
     mov eax, PAGE_DIR_TABLE_POS
     add eax,0x2000  ;second PDE addr
     or eax,PG_US_U | PG_RW_W | PG_P
-    mov ebxm PAGE_DIR_TABLE_POS
+    mov ebx, PAGE_DIR_TABLE_POS
     mov ecx,254     ;769~1022th PDE
     mov esi,769
 .create_kernel_pde:
@@ -341,17 +349,18 @@ setup_page:
 rd_disk_m32:
 
     mov esi,eax     ;backup
-    mov esi,ecx
+    mov di,cx
 
 ;set number of sectors to read
     mov dx,0x1f2
     mov al,cl
     out dx,al   
+
     mov eax,esi     ;cover eax
 
 ;set LBA index
     ;LBA 0~7 bit
-    mov dx,0x4f3
+    mov dx,0x1f3
     out dx,al
     ;LBA 8~15 bit
     mov cl,8
@@ -366,7 +375,7 @@ rd_disk_m32:
     shr eax,cl  ;LBA 24~27 bit 
     and al,0x0f
     or al,0xe0      ;7~4 : 1110b ,means LBA mode
-    mov dx,0x4f6
+    mov dx,0x1f6
     out dx,al
 
 ;set read command 0x20
@@ -393,3 +402,9 @@ rd_disk_m32:
     add ebx,2
     loop .go_on_read
     ret 
+
+
+String:
+    db "loader started"
+String_end:
+
