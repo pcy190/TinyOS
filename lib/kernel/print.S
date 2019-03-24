@@ -176,7 +176,7 @@ put_int:
 	add edx, 'A'
 
 .continue:
-	mov [ebx+edi], edx
+	mov [ebx+edi], dl
 	dec edi
 	shr eax, 4
     mov edx, eax 

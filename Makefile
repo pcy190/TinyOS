@@ -1,15 +1,71 @@
+BUILD_PATH:= ./build
+ENTRY_POINT = 0xc0001500
 
-.PHONY=run 
+
+KERNEL_PATH:=./kernel
+DEVICE_PATH:=./device
+LIB_KERNEL_PATH= ./lib/kernel
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/
+CFLAGS:= -c -m32  $(LIB) -fno-stack-protector -W -Wmissing-prototypes -Wsystem-headers
+LDFLAGS = -Ttext $(ENTRY_POINT) -e main -m elf_i386
+#-Map $(BUILD_DIR)/kernel.map
+
+TARGET_IMG_PATH:= hd.img
+
+OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
+      $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o 
+
+AS = nasm
+CC = gcc
+LD = ld
+
+.PHONY : mkdir run write clean build
 
 run: write
 	bochs -f bochsrc
 
-write:
-	$(MAKE) -C boot write
-	$(MAKE) -C kernel write
-
 clean:
 	$(MAKE) -C boot clean
-	$(MAKE) -C kernel clean
+	#$(MAKE) -C kernel clean
+	rm -rf build/*
 	rm -f bochs.out 
 	dd if=/dev/zero of=hd.img bs=512 count=400 conv=notrunc
+	
+write: build
+	$(MAKE) -C boot write
+	dd if=$(BUILD_PATH)/kernel.bin of=$(TARGET_IMG_PATH) bs=512 count=300  seek=9 conv=notrunc
+	
+build: mkdir $(BUILD_PATH)/kernel.bin
+
+mkdir:
+	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
+	
+		
+### compile
+$(BUILD_PATH)/print.o: $(LIB_KERNEL_PATH)/print.S
+	$(AS) -f elf32 $< -o $@
+$(BUILD_PATH)/kernel.o: $(KERNEL_PATH)/kernel.S
+	$(AS) -f elf32 $< -o $@
+	
+$(BUILD_PATH)/main.o: $(KERNEL_PATH)/main.c $(LIB_KERNEL_PATH)/print.h  lib/stdint.h $(KERNEL_PATH)/init.h
+	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_PATH)/init.o: $(KERNEL_PATH)/init.c $(KERNEL_PATH)/init.h $(LIB_KERNEL_PATH)/print.h  lib/stdint.h $(KERNEL_PATH)/interrupt.h  $(DEVICE_PATH)/timer.h
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/interrupt.o: $(KERNEL_PATH)/interrupt.c $(KERNEL_PATH)/interrupt.h lib/stdint.h $(KERNEL_PATH)/global.h $(LIB_KERNEL_PATH)/io.h $(LIB_KERNEL_PATH)/print.h
+	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_PATH)/timer.o: $(DEVICE_PATH)/timer.c $(DEVICE_PATH)/timer.h lib/stdint.h $(LIB_KERNEL_PATH)/io.h $(LIB_KERNEL_PATH)/print.h
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/kernel.bin: $(OBJS)
+	$(LD) $(LDFLAGS) $^ -o $@
+	
+
+
+
+
+	
+	
+	
