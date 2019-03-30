@@ -5,7 +5,7 @@ ENTRY_POINT = 0xc0001500
 KERNEL_PATH:=./kernel
 DEVICE_PATH:=./device
 LIB_KERNEL_PATH= ./lib/kernel
-LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/
 CFLAGS:= -c -m32  $(LIB) -fno-stack-protector -fno-builtin -Wall
 # -W -Wmissing-prototypes -Wsystem-headers
 LDFLAGS = -Ttext $(ENTRY_POINT) -e main -m elf_i386
@@ -15,8 +15,9 @@ TARGET_IMG_PATH:= hd.img
 
 OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
        $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o  $(BUILD_PATH)/memory.o \
-	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o
-
+	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o
+	 
+	 
 AS = nasm
 CC = gcc
 LD = ld
@@ -72,6 +73,10 @@ $(BUILD_DIR)/bitmap.o: $(LIB_KERNEL_PATH)/bitmap.c
 	
 $(BUILD_PATH)/debug.o: $(KERNEL_PATH)/debug.c
 	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/thread.o: thread/thread.c
+	$(CC) $(CFLAGS) $< -o $@
+
 
 $(BUILD_PATH)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@

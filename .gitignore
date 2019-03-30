@@ -4,3 +4,5 @@
 *img
 .vscode
 .fuse*
+build/
+hd.img
