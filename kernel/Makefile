@@ -1,3 +1,4 @@
+# Obsolete
 TARGET_IMG_PATH:= ../hd.img
 INCLUDE_KERNEL_PATH:= ../lib/kernel ../lib/ ../kernel/
 GCC_FLAGS:= -c -fno-builtin -m32

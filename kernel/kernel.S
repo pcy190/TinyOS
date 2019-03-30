@@ -22,14 +22,13 @@ intr%1entry:
     push fs
     push gs
     pushad
-
                    ; If intr from slave, we should send EOI to both master and slave
     mov al,0x20    ; EOI command
     out 0xa0,al    ; send to slave
     out 0x20,al    ; send to master
 
     push %1         ;push intr number 
-    call [idt_table + %1*4]       ; 调用idt_table中的C版本中断处理函数
+    call [idt_table + %1*4]       ; call dispatch functions in idt_table (defined in interrupt C file)
     jmp intr_exit
 section .data
     dd intr%1entry ; store each interrupt entry

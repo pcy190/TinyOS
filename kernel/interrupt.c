@@ -2,56 +2,63 @@
 #include "stdint.h"
 #include "global.h"
 #include "io.h"
+#include "print.h"
 
 //USE PIC 8259A
-#define PIC_M_CTRL 0x20	       // master control port : 0x20
-#define PIC_M_DATA 0x21	       // master data port : 0x21
-#define PIC_S_CTRL 0xa0	       // slave control port : 0xa0
-#define PIC_S_DATA 0xa1	       // slave data port : 0xa1
+#define PIC_M_CTRL 0x20 // master control port : 0x20
+#define PIC_M_DATA 0x21 // master data port : 0x21
+#define PIC_S_CTRL 0xa0 // slave control port : 0xa0
+#define PIC_S_DATA 0xa1 // slave data port : 0xa1
 
-#define IDT_DESC_CNT 0X21       // total IDT entry number
+#define IDT_DESC_CNT 0X21 // total IDT entry number
+
+#define EFLAGS_IF 0x00000200 // eflags IF bit
+#define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" \
+                                           : "=g"(EFLAG_VAR))
 
 struct gate_desc
 {
-    uint16_t    func_offset_low_word;
-    uint16_t    selector;
-    uint8_t     dwcount;   //fixed, 4th byte in door desc
-    uint8_t     attribute;
-    uint16_t    func_offset_high_word;
+   uint16_t func_offset_low_word;
+   uint16_t selector;
+   uint8_t dwcount; //fixed, 4th byte in door desc
+   uint8_t attribute;
+   uint16_t func_offset_high_word;
 };
 
-static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function);
+static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr, intr_handler function);
 
 static struct gate_desc idt[IDT_DESC_CNT];
-char* intr_name[IDT_DESC_CNT];
-intr_handler idt_table[IDT_DESC_CNT];	     // interrupt handler entry table
+char *intr_name[IDT_DESC_CNT];
+intr_handler idt_table[IDT_DESC_CNT]; // interrupt handler entry table
 
-extern intr_handler intr_entry_table[IDT_DESC_CNT];	    //refer entry table in kernel.S file
+extern intr_handler intr_entry_table[IDT_DESC_CNT]; //refer entry table in kernel.S file
 
 /* init PIC 8259A */
-static void pic_init(void){
+static void pic_init(void)
+{
 
-    /* init master */
-   outb (PIC_M_CTRL, 0x11);   // ICW1: Edge triggered,cascade 8259, needICW4.
-   outb (PIC_M_DATA, 0x20);   // ICW2: start IVT number 0x20, e.g.IR[0-7] : 0x20 ~ 0x27.
-   outb (PIC_M_DATA, 0x04);   // ICW3: IR2 connect to slave. 
-   outb (PIC_M_DATA, 0x01);   // ICW4: 8086 mode, EOI
+   /* init master */
+   outb(PIC_M_CTRL, 0x11); // ICW1: Edge triggered,cascade 8259, needICW4.
+   outb(PIC_M_DATA, 0x20); // ICW2: start IVT number 0x20, e.g.IR[0-7] : 0x20 ~ 0x27.
+   outb(PIC_M_DATA, 0x04); // ICW3: IR2 connect to slave.
+   outb(PIC_M_DATA, 0x01); // ICW4: 8086 mode, EOI
 
    /* init slave */
-   outb (PIC_S_CTRL, 0x11);	// ICW1: Edge triggered,cascade 8259, needICW4.
-   outb (PIC_S_DATA, 0x28);	// ICW2: start IVT number 0x28, e.g. IR[8-15] : 0x28 ~ 0x2F
-   outb (PIC_S_DATA, 0x02);	// ICW3: set slave pin to connect to master IR2
-   outb (PIC_S_DATA, 0x01);	// ICW4: 8086 mode, EOI
+   outb(PIC_S_CTRL, 0x11); // ICW1: Edge triggered,cascade 8259, needICW4.
+   outb(PIC_S_DATA, 0x28); // ICW2: start IVT number 0x28, e.g. IR[8-15] : 0x28 ~ 0x2F
+   outb(PIC_S_DATA, 0x02); // ICW3: set slave pin to connect to master IR2
+   outb(PIC_S_DATA, 0x01); // ICW4: 8086 mode, EOI
 
    /* open master IR0, only accept IR0 (clock interrput ) */
-   outb (PIC_M_DATA, 0xfe);
-   outb (PIC_S_DATA, 0xff);
+   outb(PIC_M_DATA, 0xfe);
+   outb(PIC_S_DATA, 0xff);
 
    put_str("   pic_init done\n");
 }
 
 /* init & make idt descriptor */
-static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler function) { 
+static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr, intr_handler function)
+{
    p_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;
    p_gdesc->selector = SELECTOR_K_CODE;
    p_gdesc->dwcount = 0;
@@ -60,29 +67,35 @@ static void make_idt_desc(struct gate_desc* p_gdesc, uint8_t attr, intr_handler 
 }
 
 /* init idt*/
-static void idt_desc_init(void) {
+static void idt_desc_init(void)
+{
    int i;
-   for (i = 0; i < IDT_DESC_CNT; i++) {
-      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
+   for (i = 0; i < IDT_DESC_CNT; i++)
+   {
+      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
    }
    put_str("   idt_desc_init done\n");
 }
 
-static void general_intr_handler(uint8_t vec_nr) {
-   if (vec_nr == 0x27 || vec_nr == 0x2f) {	
-      return;		//IRQ7 & IRQ15 produce spurious interrupt, ignore it
+static void general_intr_handler(uint8_t vec_nr)
+{
+   if (vec_nr == 0x27 || vec_nr == 0x2f)
+   {
+      return; //IRQ7 & IRQ15 produce spurious interrupt, ignore it
    }
    put_str("INT vector: 0x");
    put_int(vec_nr);
    put_char('\n');
 }
 
-static void exception_init(void) {			    // reg gengeral handler
+static void exception_init(void)
+{ // reg gengeral handler
    int i;
-   // idt_table function called by kernel/kernel.S [idt_table + %1*4] 
-   for (i = 0; i < IDT_DESC_CNT; i++) {
-      idt_table[i] = general_intr_handler;		    // default general_intr_handler。
-      intr_name[i] = "unknown";				    
+   // idt_table function called by kernel/kernel.S [idt_table + %1*4]
+   for (i = 0; i < IDT_DESC_CNT; i++)
+   {
+      idt_table[i] = general_intr_handler; // default general_intr_handler。
+      intr_name[i] = "unknown";
    }
    intr_name[0] = "#DE Divide Error";
    intr_name[1] = "#DB Debug Exception";
@@ -104,20 +117,70 @@ static void exception_init(void) {			    // reg gengeral handler
    intr_name[17] = "#AC Alignment Check Exception";
    intr_name[18] = "#MC Machine-Check Exception";
    intr_name[19] = "#XF SIMD Floating-Point Exception";
-
 }
 
+/* sti , return previous status*/
+INTR_STATUS intr_enable()
+{
+   INTR_STATUS old_status;
+   if (INTR_ON == intr_get_status())
+   {
+      old_status = INTR_ON;
+      return old_status;
+   }
+   else
+   {
+      old_status = INTR_OFF;
+      asm volatile("sti");
+      return old_status;
+   }
+}
 
+/* cli , return previous status*/
+INTR_STATUS intr_disable()
+{
+   INTR_STATUS old_status;
+   if (INTR_ON == intr_get_status())
+   {
+      old_status = INTR_ON;
+      asm volatile("cli"
+                   :
+                   :
+                   : "memory");
+   }
+   else
+   {
+      old_status = INTR_OFF;
+   }
+   return old_status;
+}
+
+/* set INTERRUPT STATUS as status */
+INTR_STATUS intr_set_status(INTR_STATUS status)
+{
+   return status & INTR_ON ? intr_enable() : intr_disable();
+}
+
+/* get current status */
+INTR_STATUS intr_get_status()
+{
+   uint32_t eflags = 0;
+   GET_EFLAGS(eflags);
+   return (EFLAGS_IF & eflags) ? INTR_ON : INTR_OFF;
+}
 
 /* init INTERRUPT work*/
-void idt_init() {
+void idt_init()
+{
    put_str("idt_init start\n");
-   idt_desc_init();	   //   init idt
+   idt_desc_init(); //   init idt
    exception_init();
-   pic_init();		   //   init 8259A
+   pic_init(); //   init 8259A
 
    /* load idt */
    uint64_t idt_operand = ((sizeof(idt) - 1) | ((uint64_t)(uint32_t)idt << 16));
-   asm volatile("lidt %0" : : "m" (idt_operand));
+   asm volatile("lidt %0"
+                :
+                : "m"(idt_operand));
    put_str("idt_init done\n");
 }
