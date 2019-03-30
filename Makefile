@@ -15,7 +15,8 @@ TARGET_IMG_PATH:= hd.img
 
 OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
        $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o  $(BUILD_PATH)/memory.o \
-	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o
+	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o \
+	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o
 	 
 	 
 AS = nasm
@@ -49,6 +50,9 @@ $(BUILD_PATH)/print.o: $(LIB_KERNEL_PATH)/print.S
 	$(AS) -f elf32 $< -o $@
 $(BUILD_PATH)/kernel.o: $(KERNEL_PATH)/kernel.S
 	$(AS) -f elf32 $< -o $@
+$(BUILD_PATH)/switch.o: thread/switch.S
+	$(AS) -f elf32 $< -o $@
+
 	
 $(BUILD_PATH)/main.o: $(KERNEL_PATH)/main.c $(LIB_KERNEL_PATH)/print.h  lib/stdint.h $(KERNEL_PATH)/init.h
 	$(CC) $(CFLAGS) $< -o $@
@@ -74,10 +78,14 @@ $(BUILD_DIR)/bitmap.o: $(LIB_KERNEL_PATH)/bitmap.c
 $(BUILD_PATH)/debug.o: $(KERNEL_PATH)/debug.c
 	$(CC) $(CFLAGS) $< -o $@
 
-$(BUILD_PATH)/thread.o: thread/thread.c
+
+
+$(BUILD_PATH)/thread.o: thread/thread.c thread/switch.S
 	$(CC) $(CFLAGS) $< -o $@
 
-
+$(BUILD_PATH)/list.o: $(LIB_KERNEL_PATH)/list.c 
+	$(CC) $(CFLAGS) $< -o $@
+	
 $(BUILD_PATH)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 	

@@ -1,6 +1,7 @@
 #ifndef __THREAD_THREAD_H
 #define __THREAD_THREAD_H
 #include "stdint.h"
+#include "list.h"
 typedef void* PVOID;
 typedef void VOID;
 
@@ -61,17 +62,27 @@ typedef struct _THREAD_STACK
     PVOID func_argc;
 } THREAD_STACK, *PTHREAD_STACK;
 
+static uint32_t cannary=0x23198408;
+//Process Control Block (PCB)
+//Task control
 typedef struct _TASK_STRUCT
 {
     uint32_t *self_kstack;
     TASK_STATUS status;
     uint8_t priority;
     char name[32];
+    uint8_t ticks;  //time tick each time on CPU
+    uint32_t elapsed_ticks; //ticks since CPU running, e.g. how long task running
+    LIST_NODE general_tag;  //general_tag in thread queue
+    LIST_NODE all_list_tag; //nodes in thread_all_list 
+    uint32_t *pgdir;    //Process Page Table VA
     uint32_t canary;
 } TASK_STRUCT, *PTASK_STRUCT;
 
 void thread_create(PTASK_STRUCT pthread,THREAD_FUNCRION func,void* func_argc );
-void init_thread(PTASK_STRUCT pthread,char* name,int prio);
+void init_thread_task_structure(PTASK_STRUCT pthread,char* name,int prio);
 PTASK_STRUCT thread_start(char* name ,int priority,THREAD_FUNCRION function,void* func_argc);
+PTASK_STRUCT get_running_thread();
+void schedule(void);
+void thread_init(void);
 #endif
-
