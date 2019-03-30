@@ -1,0 +1,6 @@
+*.out
+*.bin
+*.o
+*img
+.vscode
+.fuse*

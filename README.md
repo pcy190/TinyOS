@@ -14,7 +14,14 @@ make run-qemu
 make clean
 ```
 
+If you have problem to compile with GCC m32, you can install libs to support gcc -32 option
+```
+sudo apt-get install build-essential module-assistant  
+sudo apt-get install gcc-multilib g++-multilib 
+```
+
 # 🍊PS:
 Making something is but a lifestyle.
 It looks like a bootloader or diskloader rather than an OS. 
 Who knows. 🙂
+
