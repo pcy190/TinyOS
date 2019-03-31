@@ -16,7 +16,7 @@ TARGET_IMG_PATH:= hd.img
 OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
        $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o  $(BUILD_PATH)/memory.o \
 	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o \
-	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o
+	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o
 	 
 	 
 AS = nasm
@@ -78,7 +78,8 @@ $(BUILD_DIR)/bitmap.o: $(LIB_KERNEL_PATH)/bitmap.c
 $(BUILD_PATH)/debug.o: $(KERNEL_PATH)/debug.c
 	$(CC) $(CFLAGS) $< -o $@
 
-
+$(BUILD_PATH)/sync.o: thread/sync.c
+	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_PATH)/thread.o: thread/thread.c thread/switch.S
 	$(CC) $(CFLAGS) $< -o $@
@@ -86,6 +87,9 @@ $(BUILD_PATH)/thread.o: thread/thread.c thread/switch.S
 $(BUILD_PATH)/list.o: $(LIB_KERNEL_PATH)/list.c 
 	$(CC) $(CFLAGS) $< -o $@
 	
+$(BUILD_PATH)/console.o: $(DEVICE_PATH)/console.c
+	$(CC) $(CFLAGS) $< -o $@
+
 $(BUILD_PATH)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 	

@@ -127,6 +127,31 @@ void schedule()
     switch_to(cur, next);
 }
 
+//block cur thread and set status as stat
+void thread_block(TASK_STATUS stat)
+{
+    ASSERT(((stat == TASK_BLOCKED) || (stat == TASK_WAITING) || (stat == TASK_HANGING)));
+    INTR_STATUS old_status = intr_disable();
+    PTASK_STRUCT cur_thread = get_running_thread();
+    cur_thread->status = stat;
+    schedule();
+    intr_set_status(old_status);
+}
+
+//unblock the thread
+void thread_unblock(PTASK_STRUCT pthread)
+{
+    INTR_STATUS old_status = intr_disable();
+    ASSERT(((pthread->status == TASK_BLOCKED) || (pthread->status == TASK_WAITING) || (pthread->status == TASK_HANGING)));
+    if (pthread->status!=TASK_READY) {
+        ASSERT(!elem_find(&thread_ready_list,&pthread->general_tag));
+        list_push(&thread_ready_list,&pthread->general_tag);
+        pthread->status=TASK_READY;
+    }
+    intr_set_status(old_status);
+}
+
+
 void thread_init()
 {
     put_str("thread_init start\n");

@@ -12,7 +12,7 @@ typedef enum _TASK_STATUS
 {
     TASK_RUNNING,
     TASK_READY,
-    TASK_BLOCK,
+    TASK_BLOCKED,
     TASK_WAITING,
     TASK_HANGING,
     TASK_DIED
@@ -85,4 +85,6 @@ PTASK_STRUCT thread_start(char* name ,int priority,THREAD_FUNCRION function,void
 PTASK_STRUCT get_running_thread();
 void schedule(void);
 void thread_init(void);
+void thread_block(TASK_STATUS stat);
+void thread_unblock(PTASK_STRUCT pthread);
 #endif

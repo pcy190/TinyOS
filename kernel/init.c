@@ -4,6 +4,7 @@
 #include "timer.h"
 #include "memory.h"
 #include "thread.h"
+#include "console.h"
 //INIT all 
 void init_all(){
     put_str("start init all\n");
@@ -11,5 +12,6 @@ void init_all(){
     timer_init();
     mem_init();
     thread_init();
+    console_init();
     put_str("finish init all\n");
 }
