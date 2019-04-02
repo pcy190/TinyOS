@@ -81,4 +81,19 @@ VECTOR 0x1c,ZERO
 VECTOR 0x1d,ERROR_CODE
 VECTOR 0x1e,ERROR_CODE
 VECTOR 0x1f,ZERO
-VECTOR 0x20,ZERO
+VECTOR 0x20,ZERO    ;clock interrupt 
+VECTOR 0x21,ZERO	;keyboard interrupt
+VECTOR 0x22,ZERO	;
+VECTOR 0x23,ZERO	;com2 entry
+VECTOR 0x24,ZERO	;com1 entry
+VECTOR 0x25,ZERO	;parallel port2 entry
+VECTOR 0x26,ZERO	;floppy entry
+VECTOR 0x27,ZERO	;parallel port1 entry
+VECTOR 0x28,ZERO	;real clock interrupt
+VECTOR 0x29,ZERO	;redirected
+VECTOR 0x2a,ZERO	;reserved
+VECTOR 0x2b,ZERO	;reserved
+VECTOR 0x2c,ZERO	;ps/2 mouse
+VECTOR 0x2d,ZERO	;fpu exception
+VECTOR 0x2e,ZERO	;harddisk
+VECTOR 0x2f,ZERO	;reserved

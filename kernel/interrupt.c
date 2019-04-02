@@ -10,7 +10,7 @@
 #define PIC_S_CTRL 0xa0 // slave control port : 0xa0
 #define PIC_S_DATA 0xa1 // slave data port : 0xa1
 
-#define IDT_DESC_CNT 0X21 // total IDT entry number
+#define IDT_DESC_CNT 0x30 // total IDT entry number
 
 #define EFLAGS_IF 0x00000200 // eflags IF bit
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" \
@@ -39,8 +39,7 @@ static void pic_init(void)
 
    /* init master */
    outb(PIC_M_CTRL, 0x11); // ICW1: Edge triggered,cascade 8259, needICW4.
-   outb(PIC_M_DATA,
-        0x20);             // ICW2: start IVT number 0x20, e.g.IR[0-7] : 0x20 ~ 0x27.
+   outb(PIC_M_DATA, 0x20); // ICW2: start IVT number 0x20, e.g.IR[0-7] : 0x20 ~ 0x27.
    outb(PIC_M_DATA, 0x04); // ICW3: IR2 connect to slave.
    outb(PIC_M_DATA, 0x01); // ICW4: 8086 mode, EOI
 
@@ -52,7 +51,8 @@ static void pic_init(void)
    outb(PIC_S_DATA, 0x01); // ICW4: 8086 mode, EOI
 
    /* open master IR0, only accept IR0 (clock interrput ) */
-   outb(PIC_M_DATA, 0xfe);
+   //allow key intrrupt
+   outb(PIC_M_DATA, 0xfd);
    outb(PIC_S_DATA, 0xff);
 
    put_str("   pic_init done\n");
@@ -93,7 +93,7 @@ static void general_intr_handler(uint8_t vec_nr)
       put_char(' ');
       cursor_pos++;
    }
-   set_cursor(0); 
+   set_cursor(0);
    put_str("**************! EXCEPTION !*******************\n");
    set_cursor(88);
    put_str(intr_name[vec_nr]);

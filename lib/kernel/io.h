@@ -50,5 +50,12 @@ static inline void insw(uint16_t port, void* addr, uint32_t word_cnt) {
 
 }
 
+// read from port
+/* write word_cnt byte from port to addr */
+static inline uint8_t inb(uint16_t port) {
+   uint8_t data;
+   asm volatile ("inb %w1, %b0" : "=a" (data) : "Nd" (port));
+   return data;
+}
 
 #endif
