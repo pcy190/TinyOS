@@ -5,7 +5,7 @@ ENTRY_POINT = 0xc0001500
 KERNEL_PATH:=./kernel
 DEVICE_PATH:=./device
 LIB_KERNEL_PATH= ./lib/kernel
-LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog
 CFLAGS:= -c -m32  $(LIB) -fno-stack-protector -fno-builtin -Wall
 # -W -Wmissing-prototypes -Wsystem-headers
 LDFLAGS = -Ttext $(ENTRY_POINT) -e main -m elf_i386
@@ -17,7 +17,7 @@ OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
        $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o  $(BUILD_PATH)/memory.o \
 	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o \
 	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o \
-	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o
+	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o
 	 
 	 
 AS = nasm
@@ -95,6 +95,9 @@ $(BUILD_PATH)/ioqueue.o: $(DEVICE_PATH)/ioqueue.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_PATH)/keyboard.o: $(DEVICE_PATH)/keyboard.c
+	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_PATH)/tss.o: userprog/tss.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_PATH)/kernel.bin: $(OBJS)
