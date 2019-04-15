@@ -2,6 +2,7 @@
 #define __THREAD_THREAD_H
 #include "stdint.h"
 #include "list.h"
+#include "memory.h"
 typedef void* PVOID;
 typedef void VOID;
 
@@ -76,6 +77,7 @@ typedef struct _TASK_STRUCT
     LIST_NODE general_tag;  //general_tag in thread queue
     LIST_NODE all_list_tag; //nodes in thread_all_list 
     uint32_t *pgdir;    //Process Page Table VA
+    VISUAL_ADDRESS userprog;
     uint32_t canary;
 } TASK_STRUCT, *PTASK_STRUCT;
 

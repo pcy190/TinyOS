@@ -37,7 +37,7 @@ typedef struct _TSS {
 } TSS, *PTSS;
 static TSS tss;
 
-/* 更新tss中esp0字段的值为pthread的0级线 */
+/* Update tss as thread's r0 esp */
 void update_tss_esp(PTASK_STRUCT pthread) {
   tss.esp0 = (uint32_t *)((uint32_t)pthread + PG_SIZE);
 }
