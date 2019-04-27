@@ -7,6 +7,8 @@
 #include "process.h"
 #include "stdint.h"
 #include "string.h"
+#include "global.h"
+#include "sync.h"
 
 
 #include "console.h"
@@ -15,6 +17,7 @@
 PTASK_STRUCT main_thread; // main thread PCB  (FROM KERNEL)
 LIST thread_ready_list;
 LIST thread_all_list;
+LOCK pid_lock;		    // pid lock
 static PLIST_NODE thread_tag; // thread node in queue
 
 extern void switch_to(PTASK_STRUCT cur, PTASK_STRUCT next);
@@ -38,6 +41,16 @@ static void kernel_thread(PTHREAD_FUNCRION function, void *func_argc) {
   function(func_argc);
 }
 
+//allocate_pid
+static pid_t allocate_pid(){
+  static pid_t next_pid=0;
+  lock_acquire(&pid_lock);
+  next_pid++;
+  lock_release(&pid_lock);
+  return next_pid;
+}
+
+
 // set TASK_STRUCT ready
 void thread_create(PTASK_STRUCT pthread, THREAD_FUNCRION function, void *argc) {
   pthread->self_kstack -= sizeof(INTR_STACK);
@@ -56,6 +69,7 @@ void thread_create(PTASK_STRUCT pthread, THREAD_FUNCRION function, void *argc) {
 void init_thread(PTASK_STRUCT pthread, char *name,
                                 int priority) {
   memset(pthread, 0, sizeof(*pthread));
+  pthread->pid=allocate_pid();
   strcpy(pthread->name, name); // name len<=32
   if (pthread == main_thread) {
     /* main is also a thread, its status is always TASK_RUNNING */
@@ -179,6 +193,7 @@ void thread_init() {
   //put_char('\n');
   list_init(&thread_ready_list);
   list_init(&thread_all_list);
+  lock_init(&pid_lock);
   make_kernel_main_thread();
   put_str("thread_init done\n");
 }

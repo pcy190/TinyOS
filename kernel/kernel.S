@@ -97,3 +97,36 @@ VECTOR 0x2c,ZERO	;ps/2 mouse
 VECTOR 0x2d,ZERO	;fpu exception
 VECTOR 0x2e,ZERO	;harddisk
 VECTOR 0x2f,ZERO	;reserved
+
+
+
+;;;;;;;;;;;;;;;;   0x80 interrupt   ;;;;;;;;;;;;;;;;
+[bits 32]
+extern syscall_table
+section .text
+global syscall_handler
+syscall_handler:
+;save context
+   push 0			    ; format stack(to meet the intr_exit stack require)
+
+   push ds
+   push es
+   push fs
+   push gs
+   pushad			    ; PUSHAD: EAX,ECX,EDX,EBX,ESP,EBP,ESI,EDI 
+				 
+   push 0x80			; format stack(to meet the intr_exit stack require)
+
+;push argc of syscall
+   push edx			    ; the 3rd argc
+   push ecx			    ; the 2th argc
+   push ebx			    ; the 1st argc
+
+;call handler of sub_function
+   call [syscall_table + eax*4]	    ; index in table by eax
+   add esp, 12			    ; balance stack to skip three argc
+
+;save return val(eax) to eax_stack_memory
+   mov [esp + 8*4], eax	
+   jmp intr_exit		    ; intr_exit to recover context
+

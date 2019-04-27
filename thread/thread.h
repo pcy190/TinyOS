@@ -9,8 +9,9 @@
 typedef void thread_func(void*);
 typedef void THREAD_FUNCRION(void* argc);
 typedef void (*PTHREAD_FUNCRION)(void* argc);
+typedef int16_t pid_t;
 
-/* 进程或线程的状态 */
+//status of thread/process
 enum task_status {
    TASK_RUNNING,
    TASK_READY,
@@ -77,6 +78,7 @@ typedef struct _THREAD_STACK {
 /* 进程或线程的pcb,程序控制块 */
 typedef struct _TASK_STRUCT {
    uint32_t* self_kstack;	 // 各内核线程都用自己的内核栈
+   pid_t pid;
    enum task_status status;
    char name[16];
    uint8_t priority;

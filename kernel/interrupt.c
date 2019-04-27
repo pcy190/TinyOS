@@ -10,11 +10,13 @@
 #define PIC_S_CTRL 0xa0 // slave control port : 0xa0
 #define PIC_S_DATA 0xa1 // slave data port : 0xa1
 
-#define IDT_DESC_CNT 0x30 // total IDT entry number
+#define IDT_DESC_CNT 0x81 // total IDT entry number
 
 #define EFLAGS_IF 0x00000200 // eflags IF bit
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" \
                                            : "=g"(EFLAG_VAR))
+
+extern uint32_t syscall_handler(void);
 
 //Interrupt gate descriptor table
 struct gate_desc
@@ -58,6 +60,17 @@ static void pic_init(void)
    put_str("   pic_init done\n");
 }
 
+//init idt 
+static void idt_desc_init(void) {
+   int i, lastindex = IDT_DESC_CNT - 1;
+   for (i = 0; i < IDT_DESC_CNT; i++) {
+      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
+   }
+   //sys handler's dpl:3,
+   make_idt_desc(&idt[lastindex], IDT_DESC_ATTR_DPL3, syscall_handler);
+   put_str("   idt_desc_init done\n");
+}
+
 /* init & make idt descriptor */
 static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr,
                           intr_handler function)
@@ -67,17 +80,6 @@ static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr,
    p_gdesc->dwcount = 0;
    p_gdesc->attribute = attr;
    p_gdesc->func_offset_high_word = ((uint32_t)function & 0xFFFF0000) >> 16;
-}
-
-/* init idt*/
-static void idt_desc_init(void)
-{
-   int i;
-   for (i = 0; i < IDT_DESC_CNT; i++)
-   {
-      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
-   }
-   put_str("   idt_desc_init done\n");
 }
 
 static void general_intr_handler(uint8_t vec_nr)

@@ -5,18 +5,20 @@
 #include "ioqueue.h"
 #include "memory.h"
 #include "process.h"
+#include "syscall.h"
 #include "thread.h"
 
 void kernel_thread_function(void *);
 void kernel_thread_functionB(void *arg);
 void u_prog_a(void);
 void u_prog_b(void);
+int prog_a_pid = 0, prog_b_pid = 0;
+
 int test_var_a = 0, test_var_b = 0;
 int main() {
   put_str("Kernel Started!\n");
   init_all();
-  thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
-  thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
+
   process_execute(u_prog_a, "user_prog_a");
   process_execute(u_prog_b, "user_prog_b");
 
@@ -25,6 +27,11 @@ int main() {
   // thread_start("kernel_thraed_B", 31, kernel_thread_functionB, "arg B ");
   // asm volatile("sti");
   intr_enable();
+  console_put_str(" main_pid:0x");
+  console_put_int(sys_getpid());
+  console_put_char('\n');
+  thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
+  thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
   while (1) {
     // console_put_str("Main ");
   }
@@ -32,27 +39,34 @@ int main() {
 }
 void kernel_thread_function(void *arg) {
   char *para = arg;
-  while (1) {
-    console_put_str(" v_a:0x");
-    console_put_int(test_var_a);
-  }
+  console_put_str(" thread_a_pid:0x");
+  console_put_int(sys_getpid());
+  console_put_char('\n');
+  console_put_str(" prog_a_pid:0x");
+  console_put_int(prog_a_pid);
+  console_put_char('\n');
+  while (1)
+    ;
 }
 void kernel_thread_functionB(void *arg) {
   char *para = arg;
-  while (1) {
-    console_put_str(" v_b:0x");
-    console_put_int(test_var_b);
-  }
+  console_put_str(" thread_b_pid:0x");
+  console_put_int(sys_getpid());
+  console_put_char('\n');
+  console_put_str(" prog_b_pid:0x");
+  console_put_int(prog_b_pid);
+  console_put_char('\n');
+  while (1)
+    ;
 }
 void u_prog_a(void) {
-  while (1) {
-    test_var_a++;
-  }
-  return;
+  prog_a_pid = getpid();
+  while (1)
+    ;
 }
 
 void u_prog_b(void) {
-  while (1) {
-    test_var_b++;
-  }
+  prog_b_pid = getpid();
+  while (1)
+    ;
 }

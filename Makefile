@@ -17,7 +17,8 @@ OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
        $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o  $(BUILD_PATH)/memory.o \
 	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o \
 	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o \
-	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o $(BUILD_PATH)/process.o
+	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o $(BUILD_PATH)/process.o \
+	   $(BUILD_PATH)/syscall-init.o $(BUILD_PATH)/syscall.o
 	 
 	 
 AS = nasm
@@ -105,7 +106,13 @@ $(BUILD_PATH)/tss.o: userprog/tss.c
 	
 $(BUILD_PATH)/process.o: userprog/process.c
 	$(CC) $(CFLAGS) $< -o $@
-
+	
+$(BUILD_PATH)/syscall-init.o: userprog/syscall-init.c
+	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_PATH)/syscall.o: lib/user/syscall.c
+	$(CC) $(CFLAGS) $< -o $@
+	
 $(BUILD_PATH)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 	
