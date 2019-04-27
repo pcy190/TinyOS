@@ -92,5 +92,20 @@ struct gdt_desc {
 
 typedef void* PVOID;
 typedef void VOID;
+#define NULL ((void*)0)
+#define DIV_ROUND_UP(X, STEP) ((X + STEP - 1) / (STEP))
+#define bool int
+#define true 1
+#define false 0
+
+
+//--------------------------- EFLAGS    -------------------------------------------------------
+#define EFLAGS_MBS (1<<1) // must set
+#define EFLAGS_IF_1 (1<<9) //IF==1 : INTERRUPT OPEN
+#define EFLAGS_IF_0  0     //IF==0 : INTERRUPT CLOSE
+#define EFLAGS_IOPL_3 (3<<12) // IOPL3: user proc IO test under Non-System call 
+#define EFLAGS_IOPL_0 (0<<12) // IOPL_0
+
+
 
 #endif

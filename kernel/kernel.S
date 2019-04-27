@@ -39,7 +39,7 @@ section .data
 section .text
 global intr_exit
 intr_exit:	     
-; cover
+; recover
    add esp, 4			   ; skip intr number 
    popad
    pop gs

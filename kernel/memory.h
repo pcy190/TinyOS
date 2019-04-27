@@ -3,7 +3,7 @@
 #include "stdint.h"
 #include "bitmap.h"
 
-/* 内存池标记,用于判断用哪个内存池 */
+//memory pool
 typedef enum _POOL_FLAGS
 {
    PF_KERNEL = 1, // Kernel pool
@@ -17,20 +17,23 @@ typedef enum _POOL_FLAGS
 #define PG_US_S 0 // U/S , System
 #define PG_US_U 4 // U/S , User
 
-/* 用于虚拟地址管理 */
+
 typedef struct _VISUAL_ADDRESS
 {
-   /* 虚拟地址用到的位图结构，用于记录哪些虚拟地址被占用了。以页为单位。*/
+   //bitmap record the VA is used or not. Page Size
    struct bitmap vaddr_bitmap;
-   /* 管理的虚拟地址 */
+   //virtual address
    uint32_t vaddr_start;
 } VISUAL_ADDRESS;
 
 extern struct _POOL kernel_pool, user_pool;
 void mem_init(void);
-void *malloc_kernel_pages(uint32_t pg_cnt);
+void *get_kernel_pages(uint32_t pg_cnt);
 void *malloc_page(POOL_FLAGS pf, uint32_t pg_cnt);
 void malloc_init(void);
 uint32_t *pte_ptr(uint32_t vaddr);
 uint32_t *pde_ptr(uint32_t vaddr);
+uint32_t addr_v2p(uint32_t vaddr);
+void* get_a_page(POOL_FLAGS pf, uint32_t vaddr);
+void* get_user_pages(uint32_t pg_cnt);
 #endif

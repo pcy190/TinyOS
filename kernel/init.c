@@ -12,9 +12,9 @@
 void init_all(){
     put_str("start init all\n");
     idt_init();
-    timer_init();
     mem_init();
     thread_init();
+    timer_init();
     console_init();
     keyboard_init();
     tss_init();

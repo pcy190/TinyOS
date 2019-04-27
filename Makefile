@@ -17,15 +17,16 @@ OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
        $(BUILD_PATH)/timer.o $(BUILD_PATH)/kernel.o $(BUILD_PATH)/print.o  $(BUILD_PATH)/memory.o \
 	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o \
 	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o \
-	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o
+	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o $(BUILD_PATH)/process.o
 	 
 	 
 AS = nasm
 CC = gcc
 LD = ld
 
-.PHONY : mkdir run write clean build mk_dir
+.PHONY : mkdir run write clean build mk_dir restart
 
+    
 run: write
 	bochs -f bochsrc
 
@@ -36,6 +37,8 @@ clean:
 	rm -f bochs.out 
 	dd if=/dev/zero of=hd.img bs=4M count=10 conv=notrunc
 	
+restart: clean run
+
 write: build
 	$(MAKE) -C boot write
 	dd if=$(BUILD_PATH)/kernel.bin of=$(TARGET_IMG_PATH) bs=512 count=300  seek=9 conv=notrunc
@@ -98,6 +101,9 @@ $(BUILD_PATH)/keyboard.o: $(DEVICE_PATH)/keyboard.c
 	$(CC) $(CFLAGS) $< -o $@
 	
 $(BUILD_PATH)/tss.o: userprog/tss.c
+	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_PATH)/process.o: userprog/process.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_PATH)/kernel.bin: $(OBJS)

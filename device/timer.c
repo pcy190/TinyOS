@@ -16,7 +16,9 @@
 #define READ_WRITE_LATCH   3
 #define PIT_CONTROL_PORT   0x43
 
-extern uint32_t cannary;
+//extern uint32_t canary;
+//uint32_t cannary=0x23198408;
+
 uint32_t ticks;   //total tick since interrupt enable
 
 /* init CONTROL reg with counter_no,read write lock:rwl,counter_mode,counter_value */
@@ -35,7 +37,10 @@ static void frequency_set(uint8_t counter_port,
 
 static void intr_timer_handler(void){
    PTASK_STRUCT cur_thread=get_running_thread();
-   ASSERT(cur_thread->canary==cannary);      //cannary stack check
+
+   //todo ----------------------------- 
+   //verify canary.
+   //ASSERT(cur_thread->canary==canary);      //cannary stack check
    cur_thread->elapsed_ticks++;
    ticks++;
    if(cur_thread->ticks==0){

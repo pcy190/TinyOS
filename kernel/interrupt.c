@@ -52,7 +52,7 @@ static void pic_init(void)
 
    /* open master IR0, only accept IR0 (clock interrput ) */
    //allow key intrrupt
-   outb(PIC_M_DATA, 0xfc);
+   outb(PIC_M_DATA, 0xfe);//FE:only IR0; FD:only IR1 ;FC:both IR0&1
    outb(PIC_S_DATA, 0xff);
 
    put_str("   pic_init done\n");
