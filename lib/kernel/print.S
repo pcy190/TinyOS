@@ -110,8 +110,8 @@ put_char:
  .roll_screen:
    cld
    mov ecx, 960               ; move 2000-80=1920 char , 1920*2=3840 byte. each time 4 byte, 3840/4=960 times
-   mov esi, 0xb80a0           ; line 1 pos
-   mov edi, 0xb8000           ; line 0 pos
+   mov esi, 0xc00b80a0           ; line 1 pos ;FIX Addr problem
+   mov edi, 0xc00b8000           ; line 0 pos
    rep movsd
 
    ; Blank the last line

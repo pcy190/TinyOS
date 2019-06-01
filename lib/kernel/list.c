@@ -27,9 +27,9 @@ void list_push(PLIST plist, PLIST_NODE elem)
 {
     list_insert_before(plist->head.next, elem);
 }
-void list_iterate(PLIST plist)
-{
-}
+// void list_iterate(PLIST plist)
+// {
+// }
 
 // insert node into tail
 void list_append(PLIST plist, PLIST_NODE elem)

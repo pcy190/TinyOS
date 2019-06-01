@@ -25,7 +25,7 @@ typedef bool(*function)(PLIST_NODE, int arg);
 void list_init(PLIST);
 void list_insert_before(PLIST_NODE before, PLIST_NODE elem);
 void list_push(PLIST plist, PLIST_NODE elem);
-void list_iterate(PLIST plist);
+//void list_iterate(PLIST plist);
 void list_append(PLIST plist, PLIST_NODE elem);
 void list_remove(PLIST_NODE pelem);
 PLIST_NODE list_pop(PLIST plist);

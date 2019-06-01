@@ -21,7 +21,6 @@ LOCK pid_lock;		    // pid lock
 static PLIST_NODE thread_tag; // thread node in queue
 
 extern void switch_to(PTASK_STRUCT cur, PTASK_STRUCT next);
-
 // get current thread PCB pointer
 PTASK_STRUCT get_running_thread() {
   uint32_t esp;

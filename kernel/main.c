@@ -7,6 +7,7 @@
 #include "process.h"
 #include "syscall.h"
 #include "thread.h"
+#include "stdio.h"
 
 void kernel_thread_function(void *);
 void kernel_thread_functionB(void *arg);
@@ -30,8 +31,8 @@ int main() {
   console_put_str(" main_pid:0x");
   console_put_int(sys_getpid());
   console_put_char('\n');
-  thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
-  thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
+  //thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
+  //thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
   while (1) {
     // console_put_str("Main ");
   }
@@ -61,12 +62,16 @@ void kernel_thread_functionB(void *arg) {
 }
 void u_prog_a(void) {
   prog_a_pid = getpid();
-  while (1)
-    ;
+  //printf_("HAPPYER%x\n",23333);
+  //write("HAPPYererer");
+  while(1){
+    printf_("HAPPYER%x\n",23333);
+  }
 }
 
 void u_prog_b(void) {
   prog_b_pid = getpid();
+  //write("HAPPYererer");
   while (1)
     ;
 }
