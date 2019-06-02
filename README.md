@@ -8,13 +8,16 @@ A tiny OS running on BOCHS
 # 🍓Run
 ```
 //RUN IT
-make run-qemu
+make run
 
 //Clean workspace
 make clean
 ```
 
-If you have problem to compile with GCC m32, you can install libs to support gcc -32 option
+//Clean and run
+make restart
+
+If you have problem to compile with GCC m32, you can install libs to support gcc -m32 option
 ```
 sudo apt-get install build-essential module-assistant  
 sudo apt-get install gcc-multilib g++-multilib 
@@ -22,6 +25,17 @@ sudo apt-get install gcc-multilib g++-multilib
 
 # 🍊PS:
 Making something is but a lifestyle.
-It looks like a bootloader or diskloader rather than an OS. 
+Simplify on Linux0.11.
 Who knows. 🙂
+
+# 💡Achieved functions
+- basic memory control
+- basic thread schedule
+- input&output
+- system call handler(pid,printf,etc.)
+
+# 🏳️‍🌈TODO
+- file system (HUGE TASK~)
+- shell&tube
+- disk driver
 

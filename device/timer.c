@@ -1,6 +1,9 @@
 #include "timer.h"
 #include "io.h"
 #include "print.h"
+#include "interrupt.h"
+#include "debug.h"
+#include "thread.h"
 
 // IRQ0_FREQUENCY : IRQ0 (clock intr) frequency 
 // notice COUNTER0_VALUE<65535.  When COUNTER0_VALUE==0,means 65536
@@ -12,6 +15,11 @@
 #define COUNTER_MODE	   2
 #define READ_WRITE_LATCH   3
 #define PIT_CONTROL_PORT   0x43
+
+//extern uint32_t canary;
+//uint32_t cannary=0x23198408;
+
+uint32_t ticks;   //total tick since interrupt enable
 
 /* init CONTROL reg with counter_no,read write lock:rwl,counter_mode,counter_value */
 static void frequency_set(uint8_t counter_port, 
@@ -27,10 +35,26 @@ static void frequency_set(uint8_t counter_port,
    outb(counter_port, (uint8_t)counter_value >> 8);
 }
 
+static void intr_timer_handler(void){
+   PTASK_STRUCT cur_thread=get_running_thread();
+
+   //todo ----------------------------- 
+   //verify canary.
+   //ASSERT(cur_thread->canary==canary);      //cannary stack check
+   cur_thread->elapsed_ticks++;
+   ticks++;
+   if(cur_thread->ticks==0){
+      schedule();
+   }else{
+      cur_thread->ticks--;
+   }
+}
+
 /* 初始化PIT8253 */
 void timer_init() {
    put_str("timer init start\n");
    /* set 8253 intrrupt interval */
    frequency_set(CONTRER0_PORT, COUNTER0_NO, READ_WRITE_LATCH, COUNTER_MODE, COUNTER0_VALUE);
+   register_handler(0x20,intr_timer_handler);
    put_str("timer init done\n");
 }

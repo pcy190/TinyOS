@@ -1,6 +1,7 @@
 *.out
 *.bin
 *.o
-*img
 .vscode
 .fuse*
+build/
+hd.img

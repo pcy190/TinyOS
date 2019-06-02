@@ -16,5 +16,5 @@ INTR_STATUS intr_get_status(void);
 INTR_STATUS intr_set_status (INTR_STATUS intr_status);
 INTR_STATUS intr_enable (void);
 INTR_STATUS intr_disable (void);
-
+void register_handler(uint8_t vector_num, intr_handler function);
 #endif

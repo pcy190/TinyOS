@@ -1,37 +1,39 @@
 #include "interrupt.h"
-#include "stdint.h"
 #include "global.h"
 #include "io.h"
 #include "print.h"
+#include "stdint.h"
 
-//USE PIC 8259A
+// USE PIC 8259A
 #define PIC_M_CTRL 0x20 // master control port : 0x20
 #define PIC_M_DATA 0x21 // master data port : 0x21
 #define PIC_S_CTRL 0xa0 // slave control port : 0xa0
 #define PIC_S_DATA 0xa1 // slave data port : 0xa1
 
-#define IDT_DESC_CNT 0X21 // total IDT entry number
+#define IDT_DESC_CNT 0x81 // total IDT entry number
 
 #define EFLAGS_IF 0x00000200 // eflags IF bit
 #define GET_EFLAGS(EFLAG_VAR) asm volatile("pushfl; popl %0" \
                                            : "=g"(EFLAG_VAR))
 
+extern uint32_t syscall_handler(void);
+
+//Interrupt gate descriptor table
 struct gate_desc
 {
    uint16_t func_offset_low_word;
    uint16_t selector;
-   uint8_t dwcount; //fixed, 4th byte in door desc
+   uint8_t dwcount; // fixed, 4th byte in door desc
    uint8_t attribute;
    uint16_t func_offset_high_word;
 };
 
 static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr, intr_handler function);
-
 static struct gate_desc idt[IDT_DESC_CNT];
-char *intr_name[IDT_DESC_CNT];
-intr_handler idt_table[IDT_DESC_CNT]; // interrupt handler entry table
 
-extern intr_handler intr_entry_table[IDT_DESC_CNT]; //refer entry table in kernel.S file
+char *intr_name[IDT_DESC_CNT];
+intr_handler idt_table[IDT_DESC_CNT];               // interrupt handler entry table
+extern intr_handler intr_entry_table[IDT_DESC_CNT]; // refer entry table in kernel.S file
 
 /* init PIC 8259A */
 static void pic_init(void)
@@ -45,19 +47,33 @@ static void pic_init(void)
 
    /* init slave */
    outb(PIC_S_CTRL, 0x11); // ICW1: Edge triggered,cascade 8259, needICW4.
-   outb(PIC_S_DATA, 0x28); // ICW2: start IVT number 0x28, e.g. IR[8-15] : 0x28 ~ 0x2F
+   outb(PIC_S_DATA,
+        0x28);             // ICW2: start IVT number 0x28, e.g. IR[8-15] : 0x28 ~ 0x2F
    outb(PIC_S_DATA, 0x02); // ICW3: set slave pin to connect to master IR2
    outb(PIC_S_DATA, 0x01); // ICW4: 8086 mode, EOI
 
    /* open master IR0, only accept IR0 (clock interrput ) */
-   outb(PIC_M_DATA, 0xfe);
+   //allow key intrrupt
+   outb(PIC_M_DATA, 0xfe);//FE:only IR0; FD:only IR1 ;FC:both IR0&1
    outb(PIC_S_DATA, 0xff);
 
    put_str("   pic_init done\n");
 }
 
+//init idt 
+static void idt_desc_init(void) {
+   int i, lastindex = IDT_DESC_CNT - 1;
+   for (i = 0; i < IDT_DESC_CNT; i++) {
+      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]); 
+   }
+   //sys handler's dpl:3,
+   make_idt_desc(&idt[lastindex], IDT_DESC_ATTR_DPL3, syscall_handler);
+   put_str("   idt_desc_init done\n");
+}
+
 /* init & make idt descriptor */
-static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr, intr_handler function)
+static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr,
+                          intr_handler function)
 {
    p_gdesc->func_offset_low_word = (uint32_t)function & 0x0000FFFF;
    p_gdesc->selector = SELECTOR_K_CODE;
@@ -66,26 +82,39 @@ static void make_idt_desc(struct gate_desc *p_gdesc, uint8_t attr, intr_handler 
    p_gdesc->func_offset_high_word = ((uint32_t)function & 0xFFFF0000) >> 16;
 }
 
-/* init idt*/
-static void idt_desc_init(void)
-{
-   int i;
-   for (i = 0; i < IDT_DESC_CNT; i++)
-   {
-      make_idt_desc(&idt[i], IDT_DESC_ATTR_DPL0, intr_entry_table[i]);
-   }
-   put_str("   idt_desc_init done\n");
-}
-
 static void general_intr_handler(uint8_t vec_nr)
 {
    if (vec_nr == 0x27 || vec_nr == 0x2f)
    {
-      return; //IRQ7 & IRQ15 produce spurious interrupt, ignore it
+      return; // IRQ7 & IRQ15 produce spurious interrupt, ignore it
    }
+   set_cursor(0);
+   int cursor_pos = 0;
+   while (cursor_pos < 320)
+   {
+      put_char(' ');
+      cursor_pos++;
+   }
+   set_cursor(0);
+   put_str("**************! EXCEPTION !*******************\n");
+   set_cursor(88);
+   put_str(intr_name[vec_nr]);
+   if (vec_nr == 14)
+   {
+      //PageFalut
+      int pf_vaddr = 0;
+      asm("movl %%cr2,%0"
+          : "=r"(pf_vaddr));
+      put_str("Page Fault At 0x");
+      put_int(pf_vaddr);
+   }
+
    put_str("INT vector: 0x");
    put_int(vec_nr);
    put_char('\n');
+   put_str("**************! EXCEPTION MESSAGE END !*******************\n");
+   while (1)
+      ;
 }
 
 static void exception_init(void)
@@ -167,6 +196,12 @@ INTR_STATUS intr_get_status()
    uint32_t eflags = 0;
    GET_EFLAGS(eflags);
    return (EFLAGS_IF & eflags) ? INTR_ON : INTR_OFF;
+}
+
+//register function on vector_index of VECTOR
+void register_handler(uint8_t vector_index, intr_handler function)
+{
+   idt_table[vector_index] = function;
 }
 
 /* init INTERRUPT work*/
