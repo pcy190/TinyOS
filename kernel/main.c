@@ -9,6 +9,8 @@
 #include "thread.h"
 #include "stdio.h"
 
+#include "memory.h"
+
 void kernel_thread_function(void *);
 void kernel_thread_functionB(void *arg);
 void u_prog_a(void);
@@ -20,12 +22,12 @@ int main() {
   put_str("Kernel Started!\n");
   init_all();
 
-  process_execute(u_prog_a, "user_prog_a");
-  process_execute(u_prog_b, "user_prog_b");
+  //process_execute(u_prog_a, "user_prog_a");
+  //process_execute(u_prog_b, "user_prog_b");
 
-  // thread_start("kernel_thread_main", 31, kernel_thread_function, "H ");
+  thread_start("kernel_thread_main", 31, kernel_thread_function, "H ");
   // thread_start("kernel_thread_mainA", 31, kernel_thread_function, "A ");
-  // thread_start("kernel_thraed_B", 31, kernel_thread_functionB, "arg B ");
+  thread_start("kernel_thraed_B", 31, kernel_thread_functionB, "arg B ");
   // asm volatile("sti");
   intr_enable();
   console_put_str(" main_pid:0x");
@@ -46,32 +48,35 @@ void kernel_thread_function(void *arg) {
   console_put_str(" prog_a_pid:0x");
   console_put_int(prog_a_pid);
   console_put_char('\n');
+  void* addr = sys_malloc(63); 
+  console_put_str("KernelA malloc the "); 
+  console_put_int((int)addr);  
+  console_put_char('\n');
   while (1)
     ;
 }
 void kernel_thread_functionB(void *arg) {
   char *para = arg;
   console_put_str(" thread_b_pid:0x");
-  console_put_int(sys_getpid());
-  console_put_char('\n');
-  console_put_str(" prog_b_pid:0x");
-  console_put_int(prog_b_pid);
+  void* addr = sys_malloc(33); 
+  console_put_str("Kernel malloc the "); 
+  console_put_int((int)addr);  
   console_put_char('\n');
   while (1)
     ;
 }
 void u_prog_a(void) {
   prog_a_pid = getpid();
-  //printf_("HAPPYER%x\n",23333);
-  //write("HAPPYererer");
+  printf("HAPPYER%x\n",23333);
   while(1){
-    printf_("HAPPYER%x\n",23333);
+    //printf("HAPPYER%x\n",23333);
   }
 }
 
 void u_prog_b(void) {
   prog_b_pid = getpid();
-  //write("HAPPYererer");
   while (1)
-    ;
+    {
+      //printf("HAPPYER%x\n",prog_b_pid);
+    }
 }

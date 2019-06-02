@@ -2,6 +2,7 @@
 #include "bitmap.h"
 #include "debug.h"
 #include "global.h"
+#include "interrupt.h"
 #include "print.h"
 #include "stdint.h"
 #include "string.h"
@@ -33,6 +34,14 @@ typedef struct _POOL {
   LOCK lock;
 } POOL, *PPOOL;
 
+typedef struct _ARENA {
+  PMEM_BLOCK_DESC desc;
+  uint32_t cnt;
+  bool large; // when large==true, cnt means page numbers
+              // otherwise, cnt means numbers of spare mem_block
+} ARENA, *PARENA;
+
+MEM_BLOCK_DESC k_block_descs[DESC_CNT];
 POOL kernel_pool, user_pool;
 VISUAL_ADDRESS kernel_vaddr; // malloc for kernel
 
@@ -49,25 +58,24 @@ static void *vaddr_get(POOL_FLAGS pf, uint32_t pg_cnt) {
     }
     while (cnt < pg_cnt) {
       bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 1);
-      //cnt++;
+      // cnt++;
     }
     vaddr_start = kernel_vaddr.vaddr_start + bit_idx_start * PG_SIZE;
   } else {
     // user memory pool
     PTASK_STRUCT cur = get_running_thread();
-      bit_idx_start  = bitmap_scan(&cur->userprog_vaddr.vaddr_bitmap, pg_cnt);
-      if (bit_idx_start == -1) {
-	 return NULL;
-      }
+    bit_idx_start = bitmap_scan(&cur->userprog_vaddr.vaddr_bitmap, pg_cnt);
+    if (bit_idx_start == -1) {
+      return NULL;
+    }
 
-      while(cnt < pg_cnt) {
-	 bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 1);
-      }
-      vaddr_start = cur->userprog_vaddr.vaddr_start + bit_idx_start * PG_SIZE;
+    while (cnt < pg_cnt) {
+      bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 1);
+    }
+    vaddr_start = cur->userprog_vaddr.vaddr_start + bit_idx_start * PG_SIZE;
 
     //(0xc0000000 - PG_SIZE)has been malloc as USER STACK in start_process
-      ASSERT((uint32_t)vaddr_start < (0xc0000000 - PG_SIZE));
-   
+    ASSERT((uint32_t)vaddr_start < (0xc0000000 - PG_SIZE));
   }
   return (void *)vaddr_start;
 }
@@ -80,10 +88,9 @@ uint32_t *pte_ptr(uint32_t vaddr) {
   // single PTE size)
   /*return (uint32_t *)(0xffc00000 + ((vaddr & 0xffc00000) >> 10) +
                       PTE_IDX(vaddr) * 4);*/
-  uint32_t* pte = (uint32_t*)(0xffc00000 + \
-	 ((vaddr & 0xffc00000) >> 10) + \
-	 PTE_IDX(vaddr) * 4);
-   return pte;
+  uint32_t *pte = (uint32_t *)(0xffc00000 + ((vaddr & 0xffc00000) >> 10) +
+                               PTE_IDX(vaddr) * 4);
+  return pte;
 }
 
 // get PDE's va by input va
@@ -181,7 +188,7 @@ void *get_user_pages(uint32_t pg_cnt) {
   return vaddr;
 }
 
-//mapping pf pool and va. support 1 Page size
+// mapping pf pool and va. support 1 Page size
 void *get_a_page(POOL_FLAGS pf, uint32_t vaddr) {
   PPOOL mem_pool = (pf & PF_KERNEL) ? &kernel_pool : &user_pool;
   lock_acquire(&mem_pool->lock);
@@ -190,15 +197,15 @@ void *get_a_page(POOL_FLAGS pf, uint32_t vaddr) {
   PTASK_STRUCT cur = get_running_thread();
   int32_t bit_idx = -1;
 
-  //if user process, set process's own va bitmap
+  // if user process, set process's own va bitmap
   if (cur->pgdir != NULL && pf == PF_USER) {
     bit_idx = (vaddr - cur->userprog_vaddr.vaddr_start) / PG_SIZE;
     ASSERT(bit_idx > 0);
     bitmap_set(&cur->userprog_vaddr.vaddr_bitmap, bit_idx, 1);
 
   } else if (cur->pgdir == NULL && pf == PF_KERNEL) {
-    
-    //if kernel thread,set kernel_vaddr
+
+    // if kernel thread,set kernel_vaddr
     bit_idx = (vaddr - kernel_vaddr.vaddr_start) / PG_SIZE;
     ASSERT(bit_idx > 0);
     bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx, 1);
@@ -240,8 +247,8 @@ static void mem_pool_init(uint32_t all_mem) {
   // To simplify,here divide 8 directly.
   // This will lost some memory
   // bitmap present less memory than physical memory.
-  uint32_t kbm_length = (kernel_free_pages /8); // Kernel BitMap length. Byte
-  uint32_t ubm_length = (user_free_pages /8);   // User BitMap length.
+  uint32_t kbm_length = (kernel_free_pages / 8); // Kernel BitMap length. Byte
+  uint32_t ubm_length = (user_free_pages / 8);   // User BitMap length.
 
   uint32_t kp_start = used_mem; // Kernel Pool start
   uint32_t up_start = kp_start + kernel_free_pages * PG_SIZE; // User Pool start
@@ -293,10 +300,142 @@ static void mem_pool_init(uint32_t all_mem) {
   put_str("   mem_pool_init done\n");
 }
 
+void block_desc_init(PMEM_BLOCK_DESC desc_array) {
+  uint16_t desc_idx, block_size = 16;
+
+  // init each mem_block_desc
+  for (desc_idx = 0; desc_idx < DESC_CNT; desc_idx++) {
+    desc_array[desc_idx].block_size = block_size;
+
+    // init numbers of memory block in arena
+    desc_array[desc_idx].blocks_per_arena =
+        (PG_SIZE - sizeof(ARENA)) / block_size;
+
+    list_init(&desc_array[desc_idx].free_list);
+
+    block_size *= 2; // update next block size
+  }
+}
+
+// return the address of the IDX_th memory block in arena.
+static PMEM_BLOCK arena2block(PARENA a, uint32_t idx) {
+  return (PMEM_BLOCK)((uint32_t)a + sizeof(ARENA) + idx * a->desc->block_size);
+}
+
+// return the arena address of the memory block B.
+static PARENA block2arena(PMEM_BLOCK b) {
+  return (PARENA)((uint32_t)b & 0xfffff000);
+}
+
+// malloc size byte memory in heap
+void *sys_malloc(uint32_t size) {
+  POOL_FLAGS PF;
+  PPOOL mem_pool;
+  uint32_t pool_size;
+  PMEM_BLOCK_DESC descs;
+  PTASK_STRUCT cur_thread = running_thread();
+
+  // judge which memory pool by thread_type
+  if (cur_thread->pgdir == NULL) { // kernel thread
+    PF = PF_KERNEL;
+    pool_size = kernel_pool.pool_size;
+    mem_pool = &kernel_pool;
+    descs = k_block_descs;
+  } else { // user thread.
+    PF = PF_USER;
+    pool_size = user_pool.pool_size;
+    mem_pool = &user_pool;
+    descs = cur_thread->u_block_desc;
+  }
+
+  // judge memory pool capacity range
+  if (!(size > 0 && size < pool_size)) {
+    return NULL;
+  }
+  PARENA a;
+  PMEM_BLOCK b;
+  lock_acquire(&mem_pool->lock);
+
+  // malloc page if size>1024
+  if (size > 1024) {
+    uint32_t page_cnt =
+        DIV_ROUND_UP(size + sizeof(ARENA), PG_SIZE); // floor page number
+
+    a = malloc_page(PF, page_cnt);
+
+    if (a != NULL) {
+      memset(a, 0, page_cnt * PG_SIZE); // zero set memory
+
+      // malloc large page: set large=true, cnt=page numbers
+      a->desc = NULL;
+      a->cnt = page_cnt;
+      a->large = true;
+      lock_release(&mem_pool->lock);
+      return (void *)(a + 1); // skip sizeof arena
+    } else {
+      lock_release(&mem_pool->lock);
+      return NULL;
+    }
+  } else { // find in mem_block_desc if size < 1024
+    uint8_t desc_idx;
+
+    // find suitable block in mem desc from smallest to largest block
+    for (desc_idx = 0; desc_idx < DESC_CNT; desc_idx++) {
+      if (size <= descs[desc_idx].block_size) {
+        break;
+      }
+    }
+
+    /* if there's no suitable mem_block in mem_block_desc free_list
+     * create new arena to provide enough mem_block */
+    if (list_empty(&descs[desc_idx].free_list)) {
+      a = malloc_page(PF, 1); // arena size: 1 page
+      if (a == NULL) {
+        lock_release(&mem_pool->lock);
+        return NULL;
+      }
+      memset(a, 0, PG_SIZE);
+
+      /* small block memory
+       * desc: memory desc
+       * cnt: arena free block numbers;
+       * large: false
+       * */
+      a->desc = &descs[desc_idx];
+      a->large = false;
+      a->cnt = descs[desc_idx].blocks_per_arena;
+      uint32_t block_idx;
+
+      // disable interrupt
+      INTR_STATUS old_status = intr_disable();
+
+      // split arena to block, and add to free_list
+      for (block_idx = 0; block_idx < descs[desc_idx].blocks_per_arena;
+           block_idx++) {
+        b = arena2block(a, block_idx);
+        ASSERT(!elem_find(&a->desc->free_list, &b->free_node));
+        list_append(&a->desc->free_list, &b->free_node);
+      }
+      intr_set_status(old_status);
+    }
+
+    // start alloc block
+    b = elem2entry(MEM_BLOCK, free_node,
+                   list_pop(&(descs[desc_idx].free_list)));
+    memset(b, 0, descs[desc_idx].block_size);
+
+    a = block2arena(b); // get arena addr
+    a->cnt--;           // sub free_block numbers in arena
+    lock_release(&mem_pool->lock);
+    return (void *)b;
+  }
+}
+
 /* MEMORY INIT ENTRY */
 void mem_init() {
   put_str("mem_init start\n");
   uint32_t mem_bytes_total = (*(uint32_t *)(0xb00));
   mem_pool_init(mem_bytes_total); // init memory pool
+  block_desc_init(k_block_descs);
   put_str("mem_init done\n");
 }

@@ -5,7 +5,7 @@
 #include "bitmap.h"
 #include "memory.h"
 
-/* 自定义通用函数类型,它将在很多线程函数中做为形参类型 */
+//typed function
 typedef void thread_func(void*);
 typedef void THREAD_FUNCRION(void* argc);
 typedef void (*PTHREAD_FUNCRION)(void* argc);
@@ -97,6 +97,7 @@ typedef struct _TASK_STRUCT {
    uint32_t* pgdir;              // 进程自己页表的虚拟地址
 
    VISUAL_ADDRESS userprog_vaddr;   // 用户进程的虚拟地址
+   MEM_BLOCK_DESC u_block_desc[DESC_CNT];
    uint32_t canary;	 // 用这串数字做栈的边界标记,用于检测栈的溢出
 }TASK_STRUCT,*PTASK_STRUCT;
 

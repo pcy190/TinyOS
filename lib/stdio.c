@@ -91,18 +91,28 @@ uint32_t vsprintf(char *str, const char *format, va_list ap) {
 
 #define LENGTH 1024
 // char buf[1024] = {0};   // buffer, note that we should check the length
-uint32_t printf(const char *format, ...) {}
+uint32_t printf(const char *format, ...) {
+  va_list args;
+  va_start(args, format); // make args points to format
+                          // TODO : check the length
+  char buf[1024] = {97,20,97,0};   //vsprintf buffer
+  //itoa(buf,&buf,10);
+  vsprintf(buf, format, args);
+  ASSERT(buf[1023]==0);
+  va_end(args);
+  return write(buf);
+}
+
+/*
 uint32_t printf_(const char *format, ...) {
   // write("IN PRINTF");
   // write("IN PRINTFs");
 
   va_list args;
   va_start(args, format); // make args points to format
-                          // TODO : check the length
+                          //  check the length
   char buf[1024] = {97,20,97,0};   //vsprintf buffer
   //itoa(buf,&buf,10);
-  //write('n');
-  //write(buf);
   vsprintf(buf, format, args);
   ASSERT(buf[1023]==0);
   va_end(args);
@@ -113,4 +123,4 @@ uint32_t printf_(const char *format, ...) {
   // va_end(args);
   // ASSERT(buf[LENGTH-1]=='\0');
   // return write(buf);
-}
+}*/
