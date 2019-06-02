@@ -431,11 +431,149 @@ void *sys_malloc(uint32_t size) {
   }
 }
 
+// free pg_phy_addr to memory pool
+void pfree(uint32_t pg_phy_addr) {
+  PPOOL mem_pool;
+  uint32_t bit_idx = 0;
+  if (pg_phy_addr >= user_pool.phy_addr_start) { // user mem pool
+    mem_pool = &user_pool;
+    bit_idx = (pg_phy_addr - user_pool.phy_addr_start) / PG_SIZE;
+  } else { // kernel pool
+    mem_pool = &kernel_pool;
+    bit_idx = (pg_phy_addr - kernel_pool.phy_addr_start) / PG_SIZE;
+  }
+  bitmap_set(&mem_pool->pool_bitmap, bit_idx, 0);
+}
+
+// remove vaddr's mapping, only remove PTE flag
+// not change PDE flag to improve efficiency
+static void page_table_pte_remove(uint32_t vaddr) {
+  uint32_t *pte = pte_ptr(vaddr);
+  *pte &= ~PG_P_1; // set pte P (present) flag to 0
+  asm volatile("invlpg %0" ::"m"(vaddr) : "memory"); // update tlb
+}
+
+// remove vaddr ranging from _vaddr to _vaddr+(pg_cnt pages) in vmem pool
+static void vaddr_remove(POOL_FLAGS pf, void *_vaddr, uint32_t pg_cnt) {
+  uint32_t bit_idx_start = 0, vaddr = (uint32_t)_vaddr, cnt = 0;
+
+  if (pf == PF_KERNEL) { // kernel pool
+    bit_idx_start = (vaddr - kernel_vaddr.vaddr_start) / PG_SIZE;
+    while (cnt < pg_cnt) {
+      bitmap_set(&kernel_vaddr.vaddr_bitmap, bit_idx_start + cnt++, 0);
+    }
+  } else { // user pool
+    PTASK_STRUCT cur_thread = running_thread();
+    bit_idx_start = (vaddr - cur_thread->userprog_vaddr.vaddr_start) / PG_SIZE;
+    while (cnt < pg_cnt) {
+      bitmap_set(&cur_thread->userprog_vaddr.vaddr_bitmap,
+                 bit_idx_start + cnt++, 0);
+    }
+  }
+}
+// free cnt pages from vaddr
+void mfree_page(POOL_FLAGS pf, void *_vaddr, uint32_t pg_cnt) {
+  uint32_t pg_phy_addr;
+  uint32_t vaddr = (int32_t)_vaddr, page_cnt = 0;
+  ASSERT(pg_cnt >= 1 && vaddr % PG_SIZE == 0); // ensure vaddr align to page
+  pg_phy_addr = addr_v2p(vaddr);
+
+  // ensuer addr are out of 1M(reserved)+1K(pde)+1K(pte) memory range
+  ASSERT((pg_phy_addr % PG_SIZE) == 0 && pg_phy_addr >= 0x102000);
+
+  // judge pool type
+  if (pg_phy_addr >= user_pool.phy_addr_start) { // user_pool
+    vaddr -= PG_SIZE;
+    while (page_cnt < pg_cnt) {
+      vaddr += PG_SIZE;
+      pg_phy_addr = addr_v2p(vaddr);
+
+      // ensuer addr in user pool
+      ASSERT((pg_phy_addr % PG_SIZE) == 0 &&
+             pg_phy_addr >= user_pool.phy_addr_start);
+
+      // free phy page
+      pfree(pg_phy_addr);
+
+      // remove pte record
+      page_table_pte_remove(vaddr);
+
+      // inc page number
+      page_cnt++;
+    }
+    // empty bitmap
+    vaddr_remove(pf, _vaddr, pg_cnt);
+
+  } else { // kernel_pool
+    vaddr -= PG_SIZE;
+    while (page_cnt < pg_cnt) {
+      vaddr += PG_SIZE;
+      pg_phy_addr = addr_v2p(vaddr);
+      // ensure memory range in kernel pool
+      ASSERT((pg_phy_addr % PG_SIZE) == 0 &&
+             pg_phy_addr >= kernel_pool.phy_addr_start &&
+             pg_phy_addr < user_pool.phy_addr_start);
+
+      // free phy page
+      pfree(pg_phy_addr);
+
+      // remove pte record
+      page_table_pte_remove(vaddr);
+
+      page_cnt++;
+    }
+    // empty bitmap
+    vaddr_remove(pf, _vaddr, pg_cnt);
+  }
+}
+
+// free ptr
+void sys_free(void *ptr) {
+  ASSERT(ptr != NULL);
+  if (ptr != NULL) {
+    POOL_FLAGS PF;
+    PPOOL mem_pool;
+
+    // judge thread or process
+    if (running_thread()->pgdir == NULL) {
+      ASSERT((uint32_t)ptr >= K_HEAP_START);
+      PF = PF_KERNEL;
+      mem_pool = &kernel_pool;
+    } else {
+      PF = PF_USER;
+      mem_pool = &user_pool;
+    }
+
+    lock_acquire(&mem_pool->lock);
+    PMEM_BLOCK b = ptr;
+    PARENA a = block2arena(b);
+    ASSERT(a->large == 0 || a->large == 1);
+    if (a->desc == NULL && a->large == true) { // size > 1024
+      mfree_page(PF, a, a->cnt);
+    } else { // size < 1024 remove to free_list
+      list_append(&a->desc->free_list, &b->free_node);
+
+      // if each block is empty, free the arena
+      if (++a->cnt == a->desc->blocks_per_arena) {
+        uint32_t block_idx;
+        for (block_idx = 0; block_idx < a->desc->blocks_per_arena;
+             block_idx++) {
+          PMEM_BLOCK b = arena2block(a, block_idx);
+          ASSERT(elem_find(&a->desc->free_list, &b->free_node));
+          list_remove(&b->free_node);
+        }
+        mfree_page(PF, a, 1);
+      }
+    }
+    lock_release(&mem_pool->lock);
+  }
+}
+
 /* MEMORY INIT ENTRY */
 void mem_init() {
   put_str("mem_init start\n");
   uint32_t mem_bytes_total = (*(uint32_t *)(0xb00));
   mem_pool_init(mem_bytes_total); // init memory pool
-  block_desc_init(k_block_descs);
+  block_desc_init(k_block_descs); // init block desc for malloc
   put_str("mem_init done\n");
 }

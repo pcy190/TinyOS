@@ -52,4 +52,7 @@ void* get_a_page(POOL_FLAGS pf, uint32_t vaddr);
 void* get_user_pages(uint32_t pg_cnt);
 void block_desc_init(PMEM_BLOCK_DESC desc_array);
 void* sys_malloc(uint32_t size);
+void mfree_page(POOL_FLAGS pf, void* _vaddr, uint32_t pg_cnt);
+void pfree(uint32_t pg_phy_addr);
+void sys_free(void* ptr);
 #endif
