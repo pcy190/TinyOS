@@ -33,9 +33,10 @@ Who knows. 🙂
 - basic thread schedule
 - input&output
 - system call handler(pid,printf,etc.)
+- disk driver
 
 # 🏳️‍🌈TODO
 - file system (HUGE TASK~)
 - shell&tube
-- disk driver
+
 
