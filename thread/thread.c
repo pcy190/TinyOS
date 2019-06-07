@@ -24,7 +24,7 @@ static PLIST_NODE thread_tag; // thread node in queue
 extern void switch_to(PTASK_STRUCT cur, PTASK_STRUCT next);
 
 // idle thread
-static void idle(void* arg_UNUSED) {
+static void idle(void* arg UNUSED) {
    while(1) {
       thread_block(TASK_BLOCKED);     
       //ensure intr open before hlt
