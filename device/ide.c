@@ -1,15 +1,15 @@
 #include "ide.h"
-#include "sync.h"
-#include "io.h"
-#include "stdio.h"
-#include "stdio-kernel.h"
-#include "interrupt.h"
-#include "memory.h"
-#include "debug.h"
 #include "console.h"
-#include "timer.h"
-#include "string.h"
+#include "debug.h"
+#include "interrupt.h"
+#include "io.h"
 #include "list.h"
+#include "memory.h"
+#include "stdio-kernel.h"
+#include "stdio.h"
+#include "string.h"
+#include "sync.h"
+#include "timer.h"
 
 // ports of disk regs
 #define reg_data(channel) (channel->port_base + 0)
@@ -241,7 +241,8 @@ void ide_write(PDISK hd, uint32_t lba, void *buf, uint32_t sec_cnt) {
     }
 
     // 5. write data to disk
-    write_to_sector(hd, (void *)((uint32_t)buf + secs_done * 512), secs_to_read);
+    write_to_sector(hd, (void *)((uint32_t)buf + secs_done * 512),
+                    secs_to_read);
 
     // block while disk working
     sema_down(&hd->my_channel->disk_done);
@@ -319,7 +320,6 @@ static void partition_scan(PDISK hd, uint32_t ext_lba) {
   ide_read(hd, ext_lba, bs, 1);
   uint8_t part_idx = 0;
   PPARTITION_TABLE_ENREY p = bs->partition_table;
-
   // four partition table
   while (part_idx++ < 4) {
     if (p->partition_type == 0x5) {
@@ -342,6 +342,7 @@ static void partition_scan(PDISK hd, uint32_t ext_lba) {
         hd->prim_parts[p_no].sec_cnt = p->sector_cnt;
         hd->prim_parts[p_no].my_disk = hd;
         list_append(&partition_list, &hd->prim_parts[p_no].part_tag);
+
         sprintf(hd->prim_parts[p_no].name, "%s%d", hd->name, p_no + 1);
         p_no++;
         ASSERT(p_no < 4); // 0~3 primary part
@@ -353,6 +354,7 @@ static void partition_scan(PDISK hd, uint32_t ext_lba) {
         list_append(&partition_list, &hd->logic_parts[l_no].part_tag);
         sprintf(hd->logic_parts[l_no].name, "%s%d", hd->name,
                 l_no + 5); // logic partition index starts with 5
+
         l_no++;
         if (l_no >= MAXIMUM_LOGIC_PARTS_NUM) // now support
                                              // MAXIMUM_LOGIC_PARTS_NUM (i.e. 8)
@@ -417,6 +419,7 @@ void ide_init() {
       hd->my_channel = channel;
       hd->dev_no = dev_no;
       sprintf(hd->name, "sd%c", 'a' + channel_no * 2 + dev_no);
+      identify_disk(hd);
       if (dev_no != 0) { // we don't scan kernel disk (hd.img)
         partition_scan(hd, 0);
       }

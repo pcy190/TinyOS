@@ -6,8 +6,8 @@
 #include "string.h"
 #include "syscall.h"
 
-//DELETE
-#include"console.h"
+// DELETE
+#include "console.h"
 
 #define va_start(ap, v) ap = (va_list)&v // make ap points to the first V
 #define va_arg(ap, t) *((t *)(ap += 4))  // make ap points to next arg
@@ -34,10 +34,10 @@ uint32_t vsprintf(char *str, const char *format, va_list ap) {
   const char *index_ptr = format;
   char index_char = *index_ptr;
   int32_t arg_int;
-  char* arg_str;
+  char *arg_str;
   while (index_char) {
-    //Fixed \n problem
-    if (index_char=='\n')
+    // Fixed \n problem
+    /*if (index_char=='\n')
     {
       *(buf_ptr++) = '\n';
       //while(1);
@@ -46,8 +46,8 @@ uint32_t vsprintf(char *str, const char *format, va_list ap) {
       //break;
       index_char = (*index_ptr);
       continue;
-    }
-    
+    }*/
+
     if (index_char != '%') {
       *(buf_ptr++) = index_char;
       index_char = *(++index_ptr);
@@ -69,7 +69,7 @@ uint32_t vsprintf(char *str, const char *format, va_list ap) {
 
     case 'd':
       arg_int = va_arg(ap, int);
-      //negative
+      // negative
       if (arg_int < 0) {
         arg_int = 0 - arg_int;
         *buf_ptr++ = '-';
@@ -89,25 +89,25 @@ uint32_t vsprintf(char *str, const char *format, va_list ap) {
   return strlen(str);
 }
 
-uint32_t sprintf(char* buf, const char* format, ...) {
-   va_list args;
-   uint32_t retval;
-   va_start(args, format);
-   retval = vsprintf(buf, format, args);
-   va_end(args);
-   return retval;
+uint32_t sprintf(char *buf, const char *format, ...) {
+  va_list args;
+  uint32_t retval;
+  va_start(args, format);
+  retval = vsprintf(buf, format, args);
+  va_end(args);
+  return retval;
 }
 
 #define LENGTH 1024
 // char buf[1024] = {0};   // buffer, note that we should check the length
 uint32_t printf(const char *format, ...) {
   va_list args;
-  va_start(args, format); // make args points to format
-                          // TODO : check the length
-  char buf[1024] = {97,20,97,0};   //vsprintf buffer
-  //itoa(buf,&buf,10);
+  va_start(args, format);           // make args points to format
+                                    // TODO : check the length
+  char buf[1024] = {97, 20, 97, 0}; // vsprintf buffer
+  // itoa(buf,&buf,10);
   vsprintf(buf, format, args);
-  ASSERT(buf[1023]==0);
+  ASSERT(buf[1023] == 0);
   va_end(args);
   return write(buf);
 }

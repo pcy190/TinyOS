@@ -21,6 +21,7 @@ void init_all(){
     keyboard_init();
     tss_init();
     syscall_init();
+    intr_enable(); //ide_init need intr
     ide_init();
     put_str("finish init all\n");
 }
