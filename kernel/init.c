@@ -9,6 +9,7 @@
 #include "tss.h"
 #include "syscall-init.h"
 #include "ide.h"
+#include "fs.h"
 
 //INIT all 
 void init_all(){
@@ -23,5 +24,6 @@ void init_all(){
     syscall_init();
     intr_enable(); //ide_init need intr
     ide_init();
+    filesys_init();
     put_str("finish init all\n");
 }

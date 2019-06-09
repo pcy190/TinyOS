@@ -5,7 +5,7 @@ ENTRY_POINT = 0xc0001500
 KERNEL_PATH:=./kernel
 DEVICE_PATH:=./device
 LIB_KERNEL_PATH= ./lib/kernel
-LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog/ -I fs/
 CFLAGS:= -c -m32  $(LIB) -fno-stack-protector -fno-builtin -Wall -W -Wstrict-prototypes -Wmissing-prototypes 
 # -W -Wmissing-prototypes -Wsystem-headers
 LDFLAGS = -Ttext $(ENTRY_POINT) -e main -m elf_i386
@@ -18,7 +18,9 @@ OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
 	   $(BUILD_PATH)/debug.o $(BUILD_DIR)/bitmap.o $(BUILD_DIR)/string.o $(BUILD_PATH)/thread.o \
 	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o \
 	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o $(BUILD_PATH)/process.o \
-	   $(BUILD_PATH)/syscall-init.o $(BUILD_PATH)/syscall.o $(BUILD_PATH)/stdio.o $(BUILD_PATH)/stdio-kernel.o $(BUILD_PATH)/ide.o
+	   $(BUILD_PATH)/syscall-init.o $(BUILD_PATH)/syscall.o $(BUILD_PATH)/stdio.o $(BUILD_PATH)/stdio-kernel.o $(BUILD_PATH)/ide.o \
+	   $(BUILD_PATH)/fs.o
+	   
 	 
 AS = nasm
 CC = gcc
@@ -121,6 +123,9 @@ $(BUILD_PATH)/stdio-kernel.o: lib/kernel/stdio-kernel.c
 	$(CC) $(CFLAGS) $< -o $@
 	
 $(BUILD_PATH)/ide.o: device/ide.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/fs.o: fs/fs.c
 	$(CC) $(CFLAGS) $< -o $@
 	
 $(BUILD_PATH)/kernel.bin: $(OBJS)

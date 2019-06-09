@@ -211,6 +211,8 @@ void ide_read(PDISK hd, uint32_t lba, void *buf, uint32_t sec_cnt) {
 // write sec_cnt sectors from buf to disk
 void ide_write(PDISK hd, uint32_t lba, void *buf, uint32_t sec_cnt) {
   ASSERT(lba <= max_lba);
+  // TODO : check problem
+  if(sec_cnt==0)return;
   ASSERT(sec_cnt > 0);
   lock_acquire(&hd->my_channel->lock);
 
