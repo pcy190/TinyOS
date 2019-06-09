@@ -11,6 +11,68 @@
 #include "string.h"
 #include "super_block.h"
 
+PPARTITION cur_part; // current partition cursor
+
+// find the part_name partition and assign the cur to cur_part
+static bool mount_partition(PLIST_NODE pelem, void *arg) {
+  char *part_name = (char *)arg;
+  PPARTITION part = elem2entry(PARTITION, part_tag, pelem);
+  if (!strcmp(part->name, part_name)) {
+    cur_part = part;
+    struct disk *hd = cur_part->my_disk;
+
+    // malloc sb_buf to store super block from disk
+    PSUPER_BLOCK sb_buf = (PSUPER_BLOCK)sys_malloc(SECTOR_SIZE);
+
+    // create super block of cur_part in memory
+    cur_part->sb = (PSUPER_BLOCK)sys_malloc(sizeof(SUPER_BLOCK));
+    if (cur_part->sb == NULL) {
+      PANIC("alloc memory failed!");
+    }
+
+    // read super block
+    memset(sb_buf, 0, SECTOR_SIZE);
+    ide_read(hd, cur_part->start_lba + 1, sb_buf, 1);
+
+    // copy sb_buf super block to partition's super block
+    memcpy(cur_part->sb, sb_buf, sizeof(SUPER_BLOCK));
+
+    // read disk's bitmap to memory
+    cur_part->block_bitmap.bits =
+        (uint8_t *)sys_malloc(sb_buf->block_bitmap_sectors * SECTOR_SIZE);
+    if (cur_part->block_bitmap.bits == NULL) {
+      PANIC("alloc memory failed!");
+    }
+    cur_part->block_bitmap.btmp_bytes_len =
+        sb_buf->block_bitmap_sectors * SECTOR_SIZE;
+    // read bitmap from disk to block_bitmap.bits
+    ide_read(hd, sb_buf->block_bitmap_lba, cur_part->block_bitmap.bits,
+             sb_buf->block_bitmap_sectors);
+    /********************************************************************/
+
+    /**********     read inode bitmap from disk to memory    ************/
+    printk("Going to malloc %d  %d\n",sb_buf->inode_bitmap_sectors,sb_buf->inode_bitmap_sectors * SECTOR_SIZE);
+    cur_part->inode_bitmap.bits =
+        (uint8_t *)sys_malloc(sb_buf->inode_bitmap_sectors * SECTOR_SIZE);
+    if (cur_part->inode_bitmap.bits == NULL) {
+      PANIC("alloc memory failed!");
+    }
+    cur_part->inode_bitmap.btmp_bytes_len =
+        sb_buf->inode_bitmap_sectors * SECTOR_SIZE;
+    // read inode bitmap from disk to inode_bitmap.bits
+    ide_read(hd, sb_buf->inode_bitmap_lba, cur_part->inode_bitmap.bits,
+             sb_buf->inode_bitmap_sectors);
+    /********************************************************************/
+
+    list_init(&cur_part->open_inodes);
+    printk("mount %s done!\n", part->name);
+    // return true to stop list_traversal because we have coped with the
+    // cur_part
+    return true;
+  }
+  return false; // return false to continue list_traversal
+}
+
 // format partition, create file system
 static void partition_format(PPARTITION part) {
   uint32_t boot_sector_sects = 1;
@@ -44,7 +106,7 @@ static void partition_format(PPARTITION part) {
   sb.block_bitmap_sectors = block_bitmap_sectors;
 
   sb.inode_bitmap_lba = sb.block_bitmap_lba + sb.block_bitmap_sectors;
-  sb.block_bitmap_sectors = inode_bitmap_sects;
+  sb.inode_bitmap_sectors = inode_bitmap_sects;
 
   sb.inode_table_lba = sb.inode_bitmap_lba + sb.inode_bitmap_sectors;
   sb.inode_table_sectors = inode_table_sects;
@@ -202,4 +264,9 @@ void filesys_init() {
     channel_no++; // next channel
   }
   sys_free(sb_buf);
+
+  char default_part[8] = "sdb1"; // partition name to mount
+
+  // mount the partition
+  list_traversal(&partition_list, mount_partition, (int)default_part);
 }

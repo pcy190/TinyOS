@@ -26,11 +26,14 @@ AS = nasm
 CC = gcc
 LD = ld
 
-.PHONY : mkdir run write clean build mk_dir restart
+.PHONY : mkdir run write clean build mk_dir restart clear_disk
 
     
 run: write
 	bochs -f bochsrc
+
+clear_disk:
+	dd if=/dev/zero of=hd80M.img bs=10M count=8 conv=notrunc
 
 clean:
 	$(MAKE) -C boot clean

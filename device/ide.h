@@ -40,6 +40,10 @@ typedef struct _IDE_CHANNEL{
 }ide_channel,IDE_CHANNEL,*PIDE_CHANNEL;
 
 void ide_init(void);
+void intr_hd_handler(uint8_t irq_no);
 extern uint8_t channel_cnt;
 extern IDE_CHANNEL channels[];
+extern LIST partition_list;
+void ide_read(PDISK hd, uint32_t lba, void* buf, uint32_t sec_cnt);
+void ide_write(PDISK hd, uint32_t lba, void* buf, uint32_t sec_cnt);
 #endif

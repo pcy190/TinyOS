@@ -2,7 +2,7 @@
 
 #floppya: 1_44="./Image", status=inserted #Use FLoppy Disk A 
 
-megs: 32
+megs: 64
 
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
