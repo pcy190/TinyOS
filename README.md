@@ -1,4 +1,4 @@
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_shield)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_shield) [![Build Status](https://travis-ci.com/pcy190/TinyOS.svg?branch=master)](https://travis-ci.com/pcy190/TinyOS)
 
 # 🧀TinyOS
 A tiny OS running on BOCHS
