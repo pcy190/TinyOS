@@ -16,6 +16,7 @@ matrix:
 
 
 before_install: 
+    - sudo apt update
     - sudo apt install nasm
     - sudo apt install bochs
     - sudo apt install qemu
