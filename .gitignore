@@ -5,3 +5,4 @@
 .fuse*
 build/
 hd.img
+!.travis.yml

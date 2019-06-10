@@ -1,0 +1,18 @@
+language: c
+install: make get-deps nasm bochs
+compiler: gcc
+
+branches:
+  only:
+    - harddisk
+    
+stages:
+ - test
+
+jobs:
+ include:
+   - stage: test
+     script:
+       - echo "Testing Started ..."
+       - make build
+       - echo "Testing Finished."
