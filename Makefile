@@ -1,4 +1,4 @@
-BUILD_PATH:= ./build
+BUILD_PATH:= build
 ENTRY_POINT = 0xc0001500
 
 
@@ -53,8 +53,8 @@ write: build
 build: mk_dir $(BUILD_PATH)/kernel.bin
 
 mk_dir:
-    -@ mkdir $(BUILD_DIR)
-	if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
+	-mkdir build
+	#if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
 	
 		
 ### compile
