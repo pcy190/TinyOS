@@ -53,6 +53,7 @@ write: build
 build: mk_dir $(BUILD_PATH)/kernel.bin
 
 mk_dir:
+    -@ mkdir $(BUILD_DIR)
 	if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
 	
 		
