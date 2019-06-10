@@ -18,7 +18,8 @@ matrix:
 before_install: 
     sudo apt install build-essential module-assistant  
     sudo apt install gcc-multilib g++-multilib nasm
-
+    sudo apt install bochs
+    sudo apt install qemu
 #install: make get-deps nasm bochs
 compiler: gcc
 
