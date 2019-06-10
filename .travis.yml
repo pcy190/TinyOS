@@ -16,11 +16,14 @@ matrix:
 
 
 before_install: 
-    sudo apt-get install build-essential module-assistant  
-    sudo apt-get install gcc-multilib g++-multilib nasm
+    sudo apt install build-essential module-assistant  
+    sudo apt install gcc-multilib g++-multilib nasm
 
 #install: make get-deps nasm bochs
 compiler: gcc
+
+install:
+    make build
 
 branches:
   only:
