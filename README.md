@@ -1,4 +1,6 @@
 # 🧀TinyOS
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_shield)
+
 A tiny OS running on BOCHS
 
 # 🍉Require
@@ -39,3 +41,7 @@ Who knows. 🙂
 - shell&tube
 - disk driver
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_large)
