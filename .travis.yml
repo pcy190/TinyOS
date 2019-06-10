@@ -1,5 +1,25 @@
 language: c
-install: make get-deps nasm bochs
+
+matrix:
+  include:
+    # works on Precise and Trusty
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.6
+          packages:
+            - nasm
+      env:
+        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
+
+
+before_install: 
+    sudo apt-get install build-essential module-assistant  
+    sudo apt-get install gcc-multilib g++-multilib nasm
+
+#install: make get-deps nasm bochs
 compiler: gcc
 
 branches:
