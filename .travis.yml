@@ -16,9 +16,9 @@ matrix:
 
 
 before_install: 
-    sudo apt install Wnasm
-    sudo apt install bochs
-    sudo apt install qemu
+    - sudo apt install nasm
+    - sudo apt install bochs
+    - sudo apt install qemu
 #install: make get-deps nasm bochs
 compiler: gcc
 
