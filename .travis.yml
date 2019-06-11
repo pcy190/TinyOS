@@ -1,35 +1,16 @@
 language: c
 
-matrix:
-  include:
-    # works on Precise and Trusty
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.6
-          packages:
-            - nasm
-      env:
-        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
-
-
 before_install: 
     - sudo apt update
     - sudo apt install nasm
     - sudo apt install bochs
     - sudo apt install qemu
-#install: make get-deps nasm bochs
+
 compiler: gcc
 
 install:
     sudo make build
-
-branches:
-  only:
-    - harddisk
-    
+   
 stages:
  - test
 
@@ -38,5 +19,5 @@ jobs:
    - stage: test
      script:
        - echo "Testing Started ..."
-       - make build
+       
        - echo "Testing Finished."
