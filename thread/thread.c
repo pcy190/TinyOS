@@ -15,12 +15,25 @@
 
 //extern uint32_t cannary;
 PTASK_STRUCT main_thread; // main thread PCB  (FROM KERNEL)
+PTASK_STRUCT idle_thread; // idle thread
 LIST thread_ready_list;
 LIST thread_all_list;
 LOCK pid_lock;		    // pid lock
 static PLIST_NODE thread_tag; // thread node in queue
 
 extern void switch_to(PTASK_STRUCT cur, PTASK_STRUCT next);
+
+// idle thread
+static void idle(void* arg UNUSED) {
+   while(1) {
+      thread_block(TASK_BLOCKED);     
+      //ensure intr open before hlt
+      asm volatile ("sti; hlt" : : : "memory");
+   }
+}
+
+
+
 // get current thread PCB pointer
 PTASK_STRUCT get_running_thread() {
   uint32_t esp;
@@ -133,6 +146,12 @@ void schedule() {
   } else {
     // other reason
   }
+
+  // if no running thread, then unblock idle
+  if (list_empty(&thread_ready_list)) {
+      thread_unblock(idle_thread);
+   }
+
   ASSERT(!list_empty(&thread_ready_list));
   // schedule next thread task in queue to run
   // current running thread isn't in task queue
@@ -174,6 +193,18 @@ void thread_unblock(PTASK_STRUCT pthread) {
   intr_set_status(old_status);
 }
 
+// yield thread, release CPU and switch to other thread
+void thread_yield(void) {
+   PTASK_STRUCT cur = running_thread();   
+   INTR_STATUS old_status = intr_disable();
+   ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
+   list_append(&thread_ready_list, &cur->general_tag);
+   cur->status = TASK_READY;
+   schedule();
+   intr_set_status(old_status);
+}
+
+
 void thread_init() {
   put_str("thread_init start\n");
   // uint32_t res;
@@ -187,6 +218,7 @@ void thread_init() {
   //     res =(res<< 4);
   // }
   // cannary=res;
+  // TODO : check canary
   //put_str("Cannary is:");
   //put_int(cannary);
   //put_char('\n');
@@ -194,5 +226,6 @@ void thread_init() {
   list_init(&thread_all_list);
   lock_init(&pid_lock);
   make_kernel_main_thread();
+  idle_thread= thread_start("idle",10,idle,NULL);
   put_str("thread_init done\n");
 }

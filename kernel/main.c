@@ -24,12 +24,12 @@ int main() {
   put_str("Kernel Started!\n");
   init_all();
 
-  process_execute(u_prog_a, "user_prog_a");
+  //process_execute(u_prog_a, "user_prog_a");
   // process_execute(u_prog_b, "user_prog_b");
 
-  thread_start("kernel_thread_main", 31, kernel_thread_function, "H ");
+  //thread_start("kernel_thread_main", 31, kernel_thread_function, "H ");
   // thread_start("kernel_thread_mainA", 31, kernel_thread_function, "A ");
-  thread_start("kernel_thraed_B", 31, kernel_thread_functionB, "arg B ");
+  //thread_start("kernel_thraed_B", 31, kernel_thread_functionB, "arg B ");
   // asm volatile("sti");
   intr_enable();
   console_put_str(" main_pid:0x");

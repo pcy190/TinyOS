@@ -16,6 +16,9 @@
 #define READ_WRITE_LATCH   3
 #define PIT_CONTROL_PORT   0x43
 
+#define mil_seconds_per_intr (1000 / IRQ0_FREQUENCY)
+
+// TODO : canary
 //extern uint32_t canary;
 //uint32_t cannary=0x23198408;
 
@@ -38,7 +41,7 @@ static void frequency_set(uint8_t counter_port,
 static void intr_timer_handler(void){
    PTASK_STRUCT cur_thread=get_running_thread();
 
-   //todo ----------------------------- 
+   // TODO ----------------------------- 
    //verify canary.
    //ASSERT(cur_thread->canary==canary);      //cannary stack check
    cur_thread->elapsed_ticks++;
@@ -48,6 +51,23 @@ static void intr_timer_handler(void){
    }else{
       cur_thread->ticks--;
    }
+}
+
+// sleep ticks
+static void ticks_to_sleep(uint32_t sleep_ticks) {
+   uint32_t start_tick = ticks;
+
+   // yield until ticks is large enough
+   while (ticks - start_tick < sleep_ticks) {
+      thread_yield();
+   }
+}
+
+// sleep millisecond
+void sleep(uint32_t m_seconds) {
+  uint32_t sleep_ticks = DIV_ROUND_UP(m_seconds, mil_seconds_per_intr);
+  ASSERT(sleep_ticks > 0);
+  ticks_to_sleep(sleep_ticks); 
 }
 
 /* 初始化PIT8253 */

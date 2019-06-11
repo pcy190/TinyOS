@@ -21,7 +21,7 @@ enum task_status {
    TASK_DIED
 };
 typedef enum task_status TASK_STATUS;
-/***********   中断栈intr_stack   ***********
+/***********   interrupt stack   ***********
  * 此结构用于中断发生时保护程序(线程或进程)的上下文环境:
  * 进程或线程被外部中断或软中断打断时,会按照此结构压入上下文
  * 寄存器,  intr_exit中的出栈操作是此结构的逆操作
@@ -116,4 +116,5 @@ void schedule(void);
 void thread_init(void);
 void thread_block(enum task_status stat);
 void thread_unblock(PTASK_STRUCT pthread);
+void thread_yield(void);
 #endif

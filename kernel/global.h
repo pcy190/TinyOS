@@ -98,7 +98,7 @@ typedef void VOID;
 #define true 1
 #define false 0
 
-
+#define UNUSED __attribute__((unused))
 //--------------------------- EFLAGS    -------------------------------------------------------
 #define EFLAGS_MBS (1<<1) // must set
 #define EFLAGS_IF_1 (1<<9) //IF==1 : INTERRUPT OPEN
