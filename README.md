@@ -14,10 +14,10 @@ make run
 
 //Clean workspace
 make clean
-```
 
 //Clean and run
 make restart
+```
 
 If you have problem to compile with GCC m32, you can install libs to support gcc -m32 option
 ```
@@ -35,10 +35,12 @@ Who knows. 🙂
 - basic thread schedule
 - input&output
 - system call handler(pid,printf,etc.)
-- disk driver
+- disk driver (partition identify, format.)
+
+# 🔨Working
+- file system (HUGE TASK~)
 
 # 🏳️‍🌈TODO
-- file system (HUGE TASK~)
 - shell&tube
 
 
