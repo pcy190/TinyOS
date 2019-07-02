@@ -9,9 +9,7 @@
 #include "syscall-init.h"
 #include "syscall.h"
 #include "thread.h"
-
-
-#include "memory.h"
+#include "fs.h"
 
 void kernel_thread_function(void *);
 void kernel_thread_functionB(void *arg);
@@ -31,7 +29,12 @@ int main() {
   // thread_start("kernel_thread_mainA", 31, kernel_thread_function, "A ");
   //thread_start("kernel_thraed_B", 31, kernel_thread_functionB, "arg B ");
   // asm volatile("sti");
-  intr_enable();
+  
+  //intr_enable();
+
+  sys_open( "/test", O_CREAT );
+
+
   console_put_str(" main_pid:0x");
   console_put_int(sys_getpid());
   console_put_char('\n');

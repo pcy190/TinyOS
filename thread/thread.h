@@ -1,38 +1,33 @@
 #ifndef __THREAD_THREAD_H
 #define __THREAD_THREAD_H
-#include "stdint.h"
-#include "list.h"
 #include "bitmap.h"
+#include "list.h"
 #include "memory.h"
+#include "stdint.h"
 
-//typed function
-typedef void thread_func(void*);
-typedef void THREAD_FUNCRION(void* argc);
-typedef void (*PTHREAD_FUNCRION)(void* argc);
+#define MAX_FILES_OPEN_PER_PROC 8
+
+// typed function
+typedef void thread_func( void* );
+typedef void THREAD_FUNCRION( void* argc );
+typedef void ( *PTHREAD_FUNCRION )( void* argc );
 typedef int16_t pid_t;
 
-//status of thread/process
-enum task_status {
-   TASK_RUNNING,
-   TASK_READY,
-   TASK_BLOCKED,
-   TASK_WAITING,
-   TASK_HANGING,
-   TASK_DIED
-};
+// status of thread/process
+enum task_status { TASK_RUNNING, TASK_READY, TASK_BLOCKED, TASK_WAITING, TASK_HANGING, TASK_DIED };
 typedef enum task_status TASK_STATUS;
 /***********   interrupt stack   ***********
  * 此结构用于中断发生时保护程序(线程或进程)的上下文环境:
  * 进程或线程被外部中断或软中断打断时,会按照此结构压入上下文
  * 寄存器,  intr_exit中的出栈操作是此结构的逆操作
  * 此栈在线程自己的内核栈中位置固定,所在页的最顶端
-********************************************/
+ ********************************************/
 typedef struct _INTR_STACK {
-    uint32_t vec_no;	 // kernel.S 宏VECTOR中push %1压入的中断号
+    uint32_t vec_no;  // kernel.S 宏VECTOR中push %1压入的中断号
     uint32_t edi;
     uint32_t esi;
     uint32_t ebp;
-    uint32_t esp_dummy;	 // 虽然pushad把esp也压入,但esp是不断变化的,所以会被popad忽略
+    uint32_t esp_dummy;  // 虽然pushad把esp也压入,但esp是不断变化的,所以会被popad忽略
     uint32_t ebx;
     uint32_t edx;
     uint32_t ecx;
@@ -42,14 +37,14 @@ typedef struct _INTR_STACK {
     uint32_t es;
     uint32_t ds;
 
-/* 以下由cpu从低特权级进入高特权级时压入 */
-    uint32_t err_code;		 // err_code会被压入在eip之后
-    void (*eip) (void);
+    /* 以下由cpu从低特权级进入高特权级时压入 */
+    uint32_t err_code;  // err_code会被压入在eip之后
+    void ( *eip )( void );
     uint32_t cs;
     uint32_t eflags;
     void* esp;
     uint32_t ss;
-}INTR_STACK,*PINTR_STACK;
+} INTR_STACK, *PINTR_STACK;
 
 /***********  线程栈thread_stack  ***********
  * 线程自己的栈,用于存储线程中待执行的函数
@@ -58,63 +53,63 @@ typedef struct _INTR_STACK {
  * 实际位置取决于实际运行情况。
  ******************************************/
 typedef struct _THREAD_STACK {
-   uint32_t ebp;
-   uint32_t ebx;
-   uint32_t edi;
-   uint32_t esi;
+    uint32_t ebp;
+    uint32_t ebx;
+    uint32_t edi;
+    uint32_t esi;
 
-/* 线程第一次执行时,eip指向待调用的函数kernel_thread 
-其它时候,eip是指向switch_to的返回地址*/
-   void (*eip) (thread_func* func, void* func_arg);
+    /* 线程第一次执行时,eip指向待调用的函数kernel_thread
+    其它时候,eip是指向switch_to的返回地址*/
+    void ( *eip )( thread_func* func, void* func_arg );
 
-/*****   以下仅供第一次被调度上cpu时使用   ****/
+    /*****   以下仅供第一次被调度上cpu时使用   ****/
 
-/* 参数unused_ret只为占位置充数为返回地址 */
-   void (*unused_retaddr);
-   thread_func* function;   // 由Kernel_thread所调用的函数名
-   void* func_arg;    // 由Kernel_thread所调用的函数所需的参数
-}THREAD_STACK,*PTHREAD_STACK;
+    /* 参数unused_ret只为占位置充数为返回地址 */
+    void( *unused_retaddr );
+    thread_func* function;  // 由Kernel_thread所调用的函数名
+    void* func_arg;         // 由Kernel_thread所调用的函数所需的参数
+} THREAD_STACK, *PTHREAD_STACK;
 
 /* 进程或线程的pcb,程序控制块 */
 typedef struct _TASK_STRUCT {
-   uint32_t* self_kstack;	 // 各内核线程都用自己的内核栈
-   pid_t pid;
-   enum task_status status;
-   char name[16];
-   uint8_t priority;
-   uint8_t ticks;	   // 每次在处理器上执行的时间嘀嗒数
+    uint32_t* self_kstack;  // 各内核线程都用自己的内核栈
+    pid_t pid;
+    enum task_status status;
+    char name[ 16 ];
+    uint8_t priority;
+    uint8_t ticks;  // 每次在处理器上执行的时间嘀嗒数
 
-/* 此任务自上cpu运行后至今占用了多少cpu嘀嗒数,
- * 也就是此任务执行了多久*/
-   uint32_t elapsed_ticks;
+    /* 此任务自上cpu运行后至今占用了多少cpu嘀嗒数,
+     * 也就是此任务执行了多久*/
+    uint32_t elapsed_ticks;
 
-/* general_tag的作用是用于线程在一般的队列中的结点 */
-   LIST_NODE general_tag;				    
+    int32_t fd_table[ MAX_FILES_OPEN_PER_PROC ];  // 文件描述符数组
 
-/* all_list_tag的作用是用于线程队列thread_all_list中的结点 */
-   LIST_NODE all_list_tag;
+    /* general_tag的作用是用于线程在一般的队列中的结点 */
+    LIST_NODE general_tag;
 
-   uint32_t* pgdir;              // 进程自己页表的虚拟地址
+    /* all_list_tag的作用是用于线程队列thread_all_list中的结点 */
+    LIST_NODE all_list_tag;
 
-   VISUAL_ADDRESS userprog_vaddr;   // 用户进程的虚拟地址
-   MEM_BLOCK_DESC u_block_desc[DESC_CNT];
-   uint32_t canary;	 // 用这串数字做栈的边界标记,用于检测栈的溢出
-}TASK_STRUCT,*PTASK_STRUCT;
+    uint32_t* pgdir;  // 进程自己页表的虚拟地址
 
+    VISUAL_ADDRESS userprog_vaddr;  // 用户进程的虚拟地址
+    MEM_BLOCK_DESC u_block_desc[ DESC_CNT ];
+    uint32_t canary;  // 用这串数字做栈的边界标记,用于检测栈的溢出
+} TASK_STRUCT, *PTASK_STRUCT;
 
 extern LIST thread_ready_list;
 extern LIST thread_all_list;
 
-void thread_create(PTASK_STRUCT pthread, thread_func function,
-                   void *func_arg);
-void init_thread(PTASK_STRUCT pthread, char* name, int prio);
-PTASK_STRUCT thread_start(char* name, int prio, thread_func function, void* func_arg);
-PTASK_STRUCT running_thread(void);
-PTASK_STRUCT get_running_thread(void);
-PTASK_STRUCT running_thread(void);
-void schedule(void);
-void thread_init(void);
-void thread_block(enum task_status stat);
-void thread_unblock(PTASK_STRUCT pthread);
-void thread_yield(void);
+void thread_create( PTASK_STRUCT pthread, thread_func function, void* func_arg );
+void init_thread( PTASK_STRUCT pthread, char* name, int prio );
+PTASK_STRUCT thread_start( char* name, int prio, thread_func function, void* func_arg );
+PTASK_STRUCT running_thread( void );
+PTASK_STRUCT get_running_thread( void );
+PTASK_STRUCT running_thread( void );
+void schedule( void );
+void thread_init( void );
+void thread_block( enum task_status stat );
+void thread_unblock( PTASK_STRUCT pthread );
+void thread_yield( void );
 #endif
