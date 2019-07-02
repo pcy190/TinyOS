@@ -1,8 +1,8 @@
 #include "file.h"
-#include "inode.h"
 #include "debug.h"
 #include "fs.h"
 #include "global.h"
+#include "inode.h"
 #include "interrupt.h"
 #include "memory.h"
 #include "stdio-kernel.h"
@@ -180,4 +180,41 @@ rollback:
     }
     sys_free( io_buf );
     return -1;
+}
+
+// open inode file and return fd in pcb
+int32_t file_open( uint32_t inode_no, uint8_t flag ) {
+    int fd_idx = get_free_slot_in_global();
+    if ( fd_idx == -1 ) {
+        printk( "Exceed max open files\n" );
+        return -1;
+    }
+    file_table[ fd_idx ].fd_inode = inode_open( cur_part, inode_no );
+    file_table[ fd_idx ].fd_pos = 0;  // reset fd_pos to 0, i.e. point to file head when initially open file
+    file_table[ fd_idx ].fd_flag = flag;
+    bool* write_deny = &file_table[ fd_idx ].fd_inode->write_deny;
+
+    if ( flag & O_WRONLY || flag & O_RDWR ) {  // judge write
+        INTR_STATUS old_status = intr_disable();
+        if ( !( *write_deny ) ) {
+            *write_deny = true;  // set write deny
+            intr_set_status( old_status );
+        } else {  // since occupied, write deny fail
+            intr_set_status( old_status );
+            printk( "File cannot be write now, try again later\n" );
+            return -1;
+        }
+    }
+    return pcb_fd_install( fd_idx );
+}
+
+// close file
+int32_t file_close( PFILE file ) {
+    if ( file == NULL ) {
+        return -1;
+    }
+    file->fd_inode->write_deny = false;
+    inode_close( file->fd_inode );
+    file->fd_inode = NULL;  
+    return 0;
 }

@@ -366,6 +366,26 @@ int32_t sys_open( const char* pathname, uint8_t flags ) {
     return fd;
 }
 
+// convert local fd to global file table index
+static uint32_t fd_local2global( uint32_t local_fd ) {
+    PTASK_STRUCT cur = running_thread();
+    int32_t global_fd = cur->fd_table[ local_fd ];
+    ASSERT( global_fd >= 0 && global_fd < MAX_FILE_OPEN );
+    return ( uint32_t )global_fd;
+}
+
+// close fd file
+// return -1 if fail, 0 if success
+int32_t sys_close( int32_t fd ) {
+    int32_t ret = -1;  // default fail
+    if ( fd > 2 ) {
+        uint32_t _fd = fd_local2global( fd );
+        ret = file_close( &file_table[ _fd ] );
+        running_thread()->fd_table[ fd ] = -1;  // make fd slot
+    }
+    return ret;
+}
+
 // search file system in the disk
 // create file system if not found
 void filesys_init( void ) {

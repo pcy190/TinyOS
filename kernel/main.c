@@ -32,12 +32,14 @@ int main() {
   
   //intr_enable();
 
-  sys_open( "/test", O_CREAT );
+  uint32_t fd= sys_open( "/test", O_CREAT |O_RDONLY);
+  printf( "opened the fd:%d file\n", fd );
+  sys_close( fd );
+  printf("%d is closed\n",fd);
 
-
-  console_put_str(" main_pid:0x");
+  /* console_put_str(" main_pid:0x");
   console_put_int(sys_getpid());
-  console_put_char('\n');
+  console_put_char('\n');*/
   // thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
   // thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
   while (1) {
