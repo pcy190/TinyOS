@@ -215,6 +215,198 @@ int32_t file_close( PFILE file ) {
     }
     file->fd_inode->write_deny = false;
     inode_close( file->fd_inode );
-    file->fd_inode = NULL;  
+    file->fd_inode = NULL;
     return 0;
+}
+
+/*  write count bytes from buf to file
+    return written bytes number if success
+    return -1 if fail
+ */
+int32_t file_write( PFILE file, const void* buf, uint32_t count ) {
+    if ( ( file->fd_inode->i_size + count ) > ( BLOCK_SIZE * 140 ) ) {  // file maximum support 512*140=71680 bytes
+        printk( "Exceed max file_size 71680 bytes, write file failed\n" );
+        return -1;
+    }
+    uint8_t* io_buf = sys_malloc( BLOCK_SIZE );
+    if ( io_buf == NULL ) {
+        printk( "file_write: sys_malloc for io_buf failed\n" );
+        return -1;
+    }
+    uint32_t* all_blocks = ( uint32_t* )sys_malloc( BLOCK_SIZE + 48 );  // record all blocks addr
+    if ( all_blocks == NULL ) {
+        printk( "file_write: sys_malloc for all_blocks failed\n" );
+        return -1;
+    }
+
+    const uint8_t* src = buf;       // src points to original data buffer
+    uint32_t bytes_written = 0;     // written bytes size
+    uint32_t size_left = count;     // left bytes size
+    int32_t block_lba = -1;         // block lba address
+    uint32_t block_bitmap_idx = 0;  // block index in block_bitmap, used when bitmap_sync
+    uint32_t sec_idx;               // sector index
+    uint32_t sec_lba;               // sector lba address
+    uint32_t sec_off_bytes;         // bytes offset in sector
+    uint32_t sec_left_bytes;        // left bytes in sector
+    uint32_t chunk_size;            // data size each time write to disk
+    int32_t indirect_block_table;   // primary indirect block table
+    uint32_t block_idx;             // block index
+
+    // judge file first write. alloc a block if first write
+    if ( file->fd_inode->i_sectors[ 0 ] == 0 ) {
+        block_lba = block_bitmap_alloc( cur_part );
+        if ( block_lba == -1 ) {
+            printk( "file_write: block_bitmap_alloc failed\n" );
+            return -1;
+        }
+        file->fd_inode->i_sectors[ 0 ] = block_lba;
+
+        // sync the alloced block to disk
+        block_bitmap_idx = block_lba - cur_part->sb->data_start_lba;
+        ASSERT( block_bitmap_idx != 0 );
+        bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+    }
+
+    // occupied blocks number before write
+    uint32_t file_has_used_blocks = file->fd_inode->i_size / BLOCK_SIZE + 1;
+
+    // occupied blocks number after write
+    uint32_t file_will_use_blocks = ( file->fd_inode->i_size + count ) / BLOCK_SIZE + 1;
+    ASSERT( file_will_use_blocks <= 140 );
+
+    // whether need new blocks to store
+    uint32_t add_blocks = file_will_use_blocks - file_has_used_blocks;
+
+    // store all blocks address to all_blocks. i.e. sectors address
+    if ( add_blocks == 0 ) {
+        // write data in the same sector(block)
+        if ( file_has_used_blocks <= 12 ) {
+            block_idx = file_has_used_blocks - 1;  // point to the last used block
+            all_blocks[ block_idx ] = file->fd_inode->i_sectors[ block_idx ];
+        } else {
+            // use indirect block
+            ASSERT( file->fd_inode->i_sectors[ 12 ] != 0 );
+            indirect_block_table = file->fd_inode->i_sectors[ 12 ];
+            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );
+        }
+    } else {
+        // Three cases:
+        /* 1st case: 12 direct block is enough */
+        if ( file_will_use_blocks <= 12 ) {
+            /* write spare sector address to all_blocks */
+            block_idx = file_has_used_blocks - 1;
+            ASSERT( file->fd_inode->i_sectors[ block_idx ] != 0 );
+            all_blocks[ block_idx ] = file->fd_inode->i_sectors[ block_idx ];
+
+            /* write needed sectors address all_blocks */
+            block_idx = file_has_used_blocks;  // new blocks index to alloc
+            while ( block_idx < file_will_use_blocks ) {
+                block_lba = block_bitmap_alloc( cur_part );
+                if ( block_lba == -1 ) {
+                    printk( "file_write: block_bitmap_alloc for case 1 failed\n" );
+                    return -1;
+                }
+
+                // ensure init state in unused sector
+                ASSERT( file->fd_inode->i_sectors[ block_idx ] == 0 );
+                file->fd_inode->i_sectors[ block_idx ] = all_blocks[ block_idx ] = block_lba;
+
+                // sync the alloced block to disk
+                block_bitmap_idx = block_lba - cur_part->sb->data_start_lba;
+                bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+
+                block_idx++;  // next block index to alloc
+            }
+        } else if ( file_has_used_blocks <= 12 && file_will_use_blocks > 12 ) {
+            // 2nd case : old data in direct block, new data will use indirect block
+            block_idx = file_has_used_blocks - 1;
+            all_blocks[ block_idx ] = file->fd_inode->i_sectors[ block_idx ];
+
+            // create indirect block table
+            block_lba = block_bitmap_alloc( cur_part );
+            if ( block_lba == -1 ) {
+                printk( "file_write: block_bitmap_alloc for case 2 failed\n" );
+                return -1;
+            }
+
+            ASSERT( file->fd_inode->i_sectors[ 12 ] == 0 );  // ensure indirect block not alloced
+            // alloc indirect block table
+            indirect_block_table = file->fd_inode->i_sectors[ 12 ] = block_lba;
+
+            block_idx = file_has_used_blocks;
+            while ( block_idx < file_will_use_blocks ) {
+                block_lba = block_bitmap_alloc( cur_part );
+                if ( block_lba == -1 ) {
+                    printk( "file_write: block_bitmap_alloc for case 2 failed\n" );
+                    return -1;
+                }
+
+                if ( block_idx < 12 ) {  // new 0~11th block store to all_blocks
+                    ASSERT( file->fd_inode->i_sectors[ block_idx ] == 0 );
+                    file->fd_inode->i_sectors[ block_idx ] = all_blocks[ block_idx ] = block_lba;
+                } else {
+                    all_blocks[ block_idx ] = block_lba;
+                }
+
+                block_bitmap_idx = block_lba - cur_part->sb->data_start_lba;
+                bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+
+                block_idx++;
+            }
+            ide_write( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  // sync indirect block table to disk
+        } else if ( file_has_used_blocks > 12 ) {
+            // 3rd case: new data use indirect block
+            ASSERT( file->fd_inode->i_sectors[ 12 ] != 0 );          
+            indirect_block_table = file->fd_inode->i_sectors[ 12 ];  // get indirect block table address
+
+            // get all indirect blocks addr
+            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  
+
+            block_idx = file_has_used_blocks;
+            while ( block_idx < file_will_use_blocks ) {
+                block_lba = block_bitmap_alloc( cur_part );
+                if ( block_lba == -1 ) {
+                    printk( "file_write: block_bitmap_alloc for case 3 failed\n" );
+                    return -1;
+                }
+                all_blocks[ block_idx++ ] = block_lba;
+
+                block_bitmap_idx = block_lba - cur_part->sb->data_start_lba;
+                bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+            }
+            ide_write( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  // sync indirect block table
+        }
+    }
+
+    bool first_write_block = true;
+    /* block address record to all_blocks */
+    file->fd_pos = file->fd_inode->i_size - 1;  
+    while ( bytes_written < count ) {           // write all data
+        memset( io_buf, 0, BLOCK_SIZE );
+        sec_idx = file->fd_inode->i_size / BLOCK_SIZE;
+        sec_lba = all_blocks[ sec_idx ];
+        sec_off_bytes = file->fd_inode->i_size % BLOCK_SIZE;
+        sec_left_bytes = BLOCK_SIZE - sec_off_bytes;
+
+        /* write chunk size */
+        chunk_size = size_left < sec_left_bytes ? size_left : sec_left_bytes;
+        if ( first_write_block ) {
+            ide_read( cur_part->my_disk, sec_lba, io_buf, 1 );
+            first_write_block = false;
+        }
+        memcpy( io_buf + sec_off_bytes, src, chunk_size );
+        ide_write( cur_part->my_disk, sec_lba, io_buf, 1 );
+        // TODO : debug test 
+        printk( "file write at lba 0x%x\n", sec_lba );
+
+        src += chunk_size;                     // update src point
+        file->fd_inode->i_size += chunk_size;  // update size
+        file->fd_pos += chunk_size;
+        bytes_written += chunk_size;
+        size_left -= chunk_size;
+    }
+    inode_sync( cur_part, file->fd_inode, io_buf );
+    sys_free( all_blocks );
+    sys_free( io_buf );
+    return bytes_written;
 }

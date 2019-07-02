@@ -32,8 +32,10 @@ int main() {
   
   //intr_enable();
 
-  uint32_t fd= sys_open( "/test", O_CREAT |O_RDONLY);
+  uint32_t fd= sys_open( "/test", O_RDWR);
   printf( "opened the fd:%d file\n", fd );
+  char output[] = "hello,This is HAPPY\n";
+  sys_write( fd, output, 20 );
   sys_close( fd );
   printf("%d is closed\n",fd);
 
