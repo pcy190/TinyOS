@@ -244,7 +244,8 @@ int32_t path_depth_cnt( char* pathname ) {
 static int search_file( const char* pathname, PPATH_SEARCH_RECORD searched_record ) {
     // root directory case
     char* root_dir_match_table[] = {"/", "/.", "/.."};
-    for ( int rdir_idx = 0; rdir_idx < sizeof( root_dir_match_table ) / sizeof( char* ); rdir_idx++ ) {
+    int rdir_idx = 0;
+    for ( rdir_idx = 0; rdir_idx < sizeof( root_dir_match_table ) / sizeof( char* ); rdir_idx++ ) {
         if ( !strcmp( pathname, root_dir_match_table[ rdir_idx ] ) ) {
             searched_record->parent_dir = &root_dir;
             searched_record->file_type = FT_DIRECTORY;

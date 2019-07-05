@@ -60,7 +60,7 @@ int main() {
     printf( "%d is closed\n", fd );
     */
     int32_t res = sys_unlink( "/test" );
-	printf("/test file deleted %s\n",(res==0)?"Successfully!":"Failed");
+    printf( "/test file deleted %s\n", ( res == 0 ) ? "Successfully!" : "Failed" );
     /* console_put_str(" main_pid:0x");
     console_put_int(sys_getpid());
     console_put_char('\n');*/
