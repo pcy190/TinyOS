@@ -356,11 +356,11 @@ int32_t file_write( PFILE file, const void* buf, uint32_t count ) {
             ide_write( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  // sync indirect block table to disk
         } else if ( file_has_used_blocks > 12 ) {
             // 3rd case: new data use indirect block
-            ASSERT( file->fd_inode->i_sectors[ 12 ] != 0 );          
+            ASSERT( file->fd_inode->i_sectors[ 12 ] != 0 );
             indirect_block_table = file->fd_inode->i_sectors[ 12 ];  // get indirect block table address
 
             // get all indirect blocks addr
-            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  
+            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );
 
             block_idx = file_has_used_blocks;
             while ( block_idx < file_will_use_blocks ) {
@@ -380,8 +380,8 @@ int32_t file_write( PFILE file, const void* buf, uint32_t count ) {
 
     bool first_write_block = true;
     /* block address record to all_blocks */
-    file->fd_pos = file->fd_inode->i_size - 1;  
-    while ( bytes_written < count ) {           // write all data
+    file->fd_pos = file->fd_inode->i_size - 1;
+    while ( bytes_written < count ) {  // write all data
         memset( io_buf, 0, BLOCK_SIZE );
         sec_idx = file->fd_inode->i_size / BLOCK_SIZE;
         sec_lba = all_blocks[ sec_idx ];
@@ -396,7 +396,7 @@ int32_t file_write( PFILE file, const void* buf, uint32_t count ) {
         }
         memcpy( io_buf + sec_off_bytes, src, chunk_size );
         ide_write( cur_part->my_disk, sec_lba, io_buf, 1 );
-        // TODO : debug test 
+        // TODO : debug test
         printk( "file write at lba 0x%x\n", sec_lba );
 
         src += chunk_size;                     // update src point
@@ -409,4 +409,102 @@ int32_t file_write( PFILE file, const void* buf, uint32_t count ) {
     sys_free( all_blocks );
     sys_free( io_buf );
     return bytes_written;
+}
+
+/*  read count bytes from file to buf
+    return read bytes number if success
+    return -1 if reach the end or fail
+    */
+int32_t file_read( PFILE file, void* buf, uint32_t count ) {
+    uint8_t* buf_dst = ( uint8_t* )buf;
+    uint32_t size = count, size_left = size;
+
+    // if count larger than left bytes, we read the left bytes
+    if ( ( file->fd_pos + count ) > file->fd_inode->i_size ) {
+        size = file->fd_inode->i_size - file->fd_pos;
+        size_left = size;
+        if ( size == 0 ) {  // reach the file end
+            return -1;
+        }
+    }
+
+    uint8_t* io_buf = sys_malloc( BLOCK_SIZE );
+    if ( io_buf == NULL ) {
+        printk( "file_read: sys_malloc for io_buf failed\n" );
+    }
+    uint32_t* all_blocks = ( uint32_t* )sys_malloc( BLOCK_SIZE + 48 );
+    if ( all_blocks == NULL ) {
+        printk( "file_read: sys_malloc for all_blocks failed\n" );
+        return -1;
+    }
+
+    uint32_t block_read_start_idx = file->fd_pos / BLOCK_SIZE;           // data block start idx
+    uint32_t block_read_end_idx = ( file->fd_pos + size ) / BLOCK_SIZE;  // data block end idx
+    uint32_t read_blocks = block_read_start_idx - block_read_end_idx;
+    ASSERT( block_read_start_idx < 139 && block_read_end_idx < 139 );
+
+    int32_t indirect_block_table;  // indirect block table addr
+    uint32_t block_idx;
+
+    // store block address to all_blocks
+    if ( read_blocks == 0 ) {  // data block start idx == data block end idx, read in the same sector
+        ASSERT( block_read_end_idx == block_read_start_idx );
+        if ( block_read_end_idx < 12 ) {  // direct block
+            block_idx = block_read_end_idx;
+            all_blocks[ block_idx ] = file->fd_inode->i_sectors[ block_idx ];
+        } else {  // indirect block
+            indirect_block_table = file->fd_inode->i_sectors[ 12 ];
+            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );
+        }
+    } else {                              // read more than 1 sectors
+                                          // case1: start and end in the direct block
+        if ( block_read_end_idx < 12 ) {  // end in the direct block
+            block_idx = block_read_start_idx;
+            while ( block_idx <= block_read_end_idx ) {
+                all_blocks[ block_idx ] = file->fd_inode->i_sectors[ block_idx ];
+                block_idx++;
+            }
+        } else if ( block_read_start_idx < 12 && block_read_end_idx >= 12 ) {
+            // case2: across direct and indirect block
+            // write direct block address
+            block_idx = block_read_start_idx;
+            while ( block_idx < 12 ) {
+                all_blocks[ block_idx ] = file->fd_inode->i_sectors[ block_idx ];
+                block_idx++;
+            }
+            ASSERT( file->fd_inode->i_sectors[ 12 ] != 0 );  // assert indirect block allocated
+
+            // write indirect block address
+            indirect_block_table = file->fd_inode->i_sectors[ 12 ];
+            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  // read indirect block table
+        } else {
+            // case3: data in the indirect block
+            ASSERT( file->fd_inode->i_sectors[ 12 ] != 0 );
+            indirect_block_table = file->fd_inode->i_sectors[ 12 ];                  
+            ide_read( cur_part->my_disk, indirect_block_table, all_blocks + 12, 1 );  // read indirect block table
+        }
+    }
+
+    // read data according to all_blocks
+    uint32_t sec_idx, sec_lba, sec_off_bytes, sec_left_bytes, chunk_size;
+    uint32_t bytes_read = 0;
+    while ( bytes_read < size ) {
+        sec_idx = file->fd_pos / BLOCK_SIZE;
+        sec_lba = all_blocks[ sec_idx ];
+        sec_off_bytes = file->fd_pos % BLOCK_SIZE;
+        sec_left_bytes = BLOCK_SIZE - sec_off_bytes;
+        chunk_size = size_left < sec_left_bytes ? size_left : sec_left_bytes;  // bytes to read
+
+        memset( io_buf, 0, BLOCK_SIZE );
+        ide_read( cur_part->my_disk, sec_lba, io_buf, 1 );
+        memcpy( buf_dst, io_buf + sec_off_bytes, chunk_size );
+
+        buf_dst += chunk_size;
+        file->fd_pos += chunk_size;
+        bytes_read += chunk_size;
+        size_left -= chunk_size;
+    }
+    sys_free( all_blocks );
+    sys_free( io_buf );
+    return bytes_read;
 }

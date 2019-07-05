@@ -416,6 +416,17 @@ int32_t sys_write( int32_t fd, const void* buf, uint32_t count ) {
     }
 }
 
+// read count bytes from fd file to buf.
+int32_t sys_read(int32_t fd, void* buf, uint32_t count) {
+   if (fd < 0) {
+      printk("sys_read: fd error.\n");
+      return -1;
+   }
+   ASSERT(buf != NULL);
+   uint32_t _fd = fd_local2global(fd);
+   return file_read(&file_table[_fd], buf, count);   
+}
+
 // search file system in the disk
 // create file system if not found
 void filesys_init( void ) {
