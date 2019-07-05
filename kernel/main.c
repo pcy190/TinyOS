@@ -32,12 +32,12 @@ int main() {
     // asm volatile("sti");
 
     // intr_enable();
-
+    /*
     uint32_t fd = sys_open( "/test", O_RDWR );
     printf( "opened the fd:%d file\n", fd );
     // char output[] = "hello,This is HAPPY\n";
     // sys_write( fd, output, 20 );
-    char buf[ 64 ] = {0};
+     char buf[ 64 ] = {0};
     int read_bytes_number = sys_read( fd, buf, 13 );
     printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
 
@@ -58,7 +58,9 @@ int main() {
 
     sys_close( fd );
     printf( "%d is closed\n", fd );
-
+    */
+    int32_t res = sys_unlink( "/test" );
+	printf("/test file deleted %s\n",(res==0)?"Successfully!":"Failed");
     /* console_put_str(" main_pid:0x");
     console_put_int(sys_getpid());
     console_put_char('\n');*/

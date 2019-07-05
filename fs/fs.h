@@ -46,4 +46,5 @@ int32_t sys_write( int32_t fd, const void* buf, uint32_t count );
 int32_t sys_read( int32_t fd, void* buf, uint32_t count );
 int32_t sys_lseek( int32_t fd, int32_t offset, uint8_t whence );
 int32_t sys_getsize( int32_t fd );
+int32_t sys_unlink( const char* pathname );
 #endif  // __FS_FS_H

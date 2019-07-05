@@ -214,3 +214,106 @@ bool sync_dir_entry( PDIR parent_dir, PDIR_ENTRY p_de, void* io_buf ) {
     printk( "Directory is full!\n" );
     return false;
 }
+
+// delete the inode_no dir entry in pdir
+bool delete_dir_entry( PPARTITION part, PDIR pdir, uint32_t inode_no, void* io_buf ) {
+    PINODE dir_inode = pdir->inode;
+    uint32_t block_idx = 0, all_blocks[ 140 ] = {0};
+    while ( block_idx < 12 ) {
+        all_blocks[ block_idx ] = dir_inode->i_sectors[ block_idx ];
+        block_idx++;
+    }
+    if ( dir_inode->i_sectors[ 12 ] ) {
+        ide_read( part->my_disk, dir_inode->i_sectors[ 12 ], all_blocks + 12, 1 );
+    }
+
+    uint32_t dir_entry_size = part->sb->dir_entry_size;
+    uint32_t dir_entrys_per_sector = ( SECTOR_SIZE / dir_entry_size );  // maximum dir entry in each sector
+    PDIR_ENTRY dir_e = ( PDIR_ENTRY )io_buf;
+    PDIR_ENTRY dir_entry_found = NULL;
+    uint8_t dir_entry_idx, dir_entry_cnt;
+    bool is_dir_first_block = false;
+
+    block_idx = 0;
+    while ( block_idx < 140 ) {
+        is_dir_first_block = false;
+        if ( all_blocks[ block_idx ] == 0 ) {
+            block_idx++;
+            continue;
+        }
+        dir_entry_idx = dir_entry_cnt = 0;
+        memset( io_buf, 0, SECTOR_SIZE );
+        ide_read( part->my_disk, all_blocks[ block_idx ], io_buf, 1 );
+
+        // iterate all dir entry, record dir_entry number and found the target dir entry
+        while ( dir_entry_idx < dir_entrys_per_sector ) {
+            if ( ( dir_e + dir_entry_idx )->f_type != FT_UNKNOWN ) {
+                if ( !strcmp( ( dir_e + dir_entry_idx )->filename, "." ) ) {
+                    is_dir_first_block = true;
+                } else if ( strcmp( ( dir_e + dir_entry_idx )->filename, "." ) && strcmp( ( dir_e + dir_entry_idx )->filename, ".." ) ) {
+                    // TODO : vague judge
+                    dir_entry_cnt++;                                      // record dir entry number, to judge whether release this sector later
+                    if ( ( dir_e + dir_entry_idx )->i_no == inode_no ) {  // if found, record to dir_entry_found
+                        ASSERT( dir_entry_found == NULL );                // ensure found this inode only once
+                        dir_entry_found = dir_e + dir_entry_idx;
+                    }
+                }
+            }
+            dir_entry_idx++;
+        }
+
+        // if not found target dir entry, search in the next sector
+        if ( dir_entry_found == NULL ) {
+            block_idx++;
+            continue;
+        }
+
+        ASSERT( dir_entry_cnt >= 1 );
+        // if this sector only has this target dir(except the first sector of dir), then release this sector
+        if ( dir_entry_cnt == 1 && !is_dir_first_block ) {
+            // 1. release block in block bitmap
+            uint32_t block_bitmap_idx = all_blocks[ block_idx ] - part->sb->data_start_lba;
+            bitmap_set( &part->block_bitmap, block_bitmap_idx, 0 );
+            bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+
+            // 2. clear block in i_sectors
+            if ( block_idx < 12 ) {
+                dir_inode->i_sectors[ block_idx ] = 0;
+            } else {  // release in the indirect blocks
+                uint32_t indirect_blocks = 0;
+                uint32_t indirect_block_idx = 12;
+                while ( indirect_block_idx < 140 ) {
+                    if ( all_blocks[ indirect_block_idx ] != 0 ) {
+                        indirect_blocks++;
+                    }
+                }
+                ASSERT( indirect_blocks >= 1 );  // contains this target block
+
+                if ( indirect_blocks > 1 ) {  // indirect blocks has more than 1 block, clear this indirect block address only
+                    all_blocks[ block_idx ] = 0;
+                    ide_write( part->my_disk, dir_inode->i_sectors[ 12 ], all_blocks + 12, 1 );
+                } else {
+                    // if indirect blocks only has one block, release this whole indirect block
+                    block_bitmap_idx = dir_inode->i_sectors[ 12 ] - part->sb->data_start_lba;
+                    bitmap_set( &part->block_bitmap, block_bitmap_idx, 0 );
+                    bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+
+                    dir_inode->i_sectors[ 12 ] = 0;
+                }
+            }
+        } else {  // only clear dir entry
+            memset( dir_entry_found, 0, dir_entry_size );
+            ide_write( part->my_disk, all_blocks[ block_idx ], io_buf, 1 );
+        }
+
+        // sync inode
+        ASSERT( dir_inode->i_size >= dir_entry_size );
+        dir_inode->i_size -= dir_entry_size;
+        memset( io_buf, 0, SECTOR_SIZE * 2 );
+        inode_sync( part, dir_inode, io_buf );
+
+        return true;
+    }
+    // cannot found in each loop, return false
+    return false;
+}

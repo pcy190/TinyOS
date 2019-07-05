@@ -144,6 +144,87 @@ void inode_close( PINODE inode ) {
     intr_set_status( old_status );
 }
 
+// clear the inode of the partition
+// TODO : only for debug
+void inode_delete( PPARTITION part, uint32_t inode_no, void* io_buf ) {
+    ASSERT( inode_no < 4096 );
+    INODE_POSITION inode_pos;
+    inode_locate( part, inode_no, &inode_pos );
+    ASSERT( inode_pos.sec_lba <= ( part->start_lba + part->sec_cnt ) );
+
+    char* inode_buf = ( char* )io_buf;
+    if ( inode_pos.two_sec ) {  // across sectors
+        // read to inode_buf
+        ide_read( part->my_disk, inode_pos.sec_lba, inode_buf, 2 );
+        // zero set inode_buf
+        memset( ( inode_buf + inode_pos.off_size ), 0, sizeof( INODE ) );
+        // use inode_buf to reset inode sector
+        ide_write( part->my_disk, inode_pos.sec_lba, inode_buf, 2 );
+    } else {  // one sector
+        ide_read( part->my_disk, inode_pos.sec_lba, inode_buf, 1 );
+        memset( ( inode_buf + inode_pos.off_size ), 0, sizeof( INODE ) );
+        ide_write( part->my_disk, inode_pos.sec_lba, inode_buf, 1 );
+    }
+}
+
+/* 回收inode的数据块和inode本身 */
+void inode_release( PPARTITION part, uint32_t inode_no ) {
+    PINODE inode_to_del = inode_open( part, inode_no );
+    ASSERT( inode_to_del->i_number == inode_no );
+
+    // release all blocks of inode
+    uint8_t block_idx = 0, block_cnt = 12;
+    uint32_t block_bitmap_idx;
+    uint32_t all_blocks[ 140 ] = {0};  // 12 direct blocks + 128 indirect blocks
+
+    // 1. store direct blocks to all_blocks
+    while ( block_idx < 12 ) {
+        all_blocks[ block_idx ] = inode_to_del->i_sectors[ block_idx ];
+        block_idx++;
+    }
+
+    // 2. if indirect blocks table allocated, store 128 indirect blocks to all_blocks[12~] and release indirect blocks table
+    if ( inode_to_del->i_sectors[ 12 ] != 0 ) {
+        ide_read( part->my_disk, inode_to_del->i_sectors[ 12 ], all_blocks + 12, 1 );
+        block_cnt = 140;
+
+        // release indirect blocks table
+        block_bitmap_idx = inode_to_del->i_sectors[ 12 ] - part->sb->data_start_lba;
+        ASSERT( block_bitmap_idx > 0 );
+        bitmap_set( &part->block_bitmap, block_bitmap_idx, 0 );
+        bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+    }
+
+    // 3. release blocks according to the all_blocks
+    block_idx = 0;
+    while ( block_idx < block_cnt ) {
+        if ( all_blocks[ block_idx ] != 0 ) {
+            block_bitmap_idx = 0;
+            block_bitmap_idx = all_blocks[ block_idx ] - part->sb->data_start_lba;
+            ASSERT( block_bitmap_idx > 0 );
+            bitmap_set( &part->block_bitmap, block_bitmap_idx, 0 );
+            bitmap_sync( cur_part, block_bitmap_idx, BLOCK_BITMAP );
+        }
+        block_idx++;
+    }
+
+    // release inode bitmap
+    bitmap_set( &part->inode_bitmap, inode_no, 0 );
+    bitmap_sync( cur_part, inode_no, INODE_BITMAP );
+
+    /***********************************************/
+    // TODO : debug
+    // iode_delete is only for debug.
+    // it's no need to clear inode in the disk.
+    // The inode is allocated in bitmap, it can be replaced when it was realloced again.
+    void* io_buf = sys_malloc( 1024 );
+    inode_delete( part, inode_no, io_buf );
+    sys_free( io_buf );
+    /***********************************************/
+
+    inode_close( inode_to_del );
+}
+
 // init inode
 void inode_init( uint32_t inode_no, PINODE new_inode ) {
     new_inode->i_number = inode_no;
