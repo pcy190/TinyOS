@@ -25,6 +25,12 @@ typedef enum _FILE_OPEN_FLAGS {
     O_CREAT = 4  // create
 } FILE_OPEN_FLAGS;
 
+typedef enum _WHENCE {
+    SEEK_SET = 1,  // offset from file head
+    SEEK_CUR,      // offset from current pos
+    SEEK_END       // offset from file size
+} WHENCE;
+
 typedef struct _PATH_SEARCH_RECORD {
     char searched_path[ MAX_PATH_LEN ];  // parent dir name
     struct _DIR* parent_dir;             // direct parent directory
@@ -38,4 +44,6 @@ int32_t sys_open( const char* pathname, uint8_t flags );
 int32_t sys_close( int32_t fd );
 int32_t sys_write( int32_t fd, const void* buf, uint32_t count );
 int32_t sys_read( int32_t fd, void* buf, uint32_t count );
+int32_t sys_lseek( int32_t fd, int32_t offset, uint8_t whence );
+int32_t sys_getsize( int32_t fd );
 #endif  // __FS_FS_H

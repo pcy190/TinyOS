@@ -49,6 +49,13 @@ int main() {
     read_bytes_number = sys_read( fd, buf, 20 );
     printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
 
+    printf( "Now seek set position-----\n" );
+    sys_lseek( fd, 0, SEEK_SET );
+
+    memset( buf, 0, sizeof( buf ) );
+    read_bytes_number = sys_read( fd, buf, 40 );
+    printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
+
     sys_close( fd );
     printf( "%d is closed\n", fd );
 

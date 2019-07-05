@@ -417,14 +417,55 @@ int32_t sys_write( int32_t fd, const void* buf, uint32_t count ) {
 }
 
 // read count bytes from fd file to buf.
-int32_t sys_read(int32_t fd, void* buf, uint32_t count) {
-   if (fd < 0) {
-      printk("sys_read: fd error.\n");
-      return -1;
-   }
-   ASSERT(buf != NULL);
-   uint32_t _fd = fd_local2global(fd);
-   return file_read(&file_table[_fd], buf, count);   
+int32_t sys_read( int32_t fd, void* buf, uint32_t count ) {
+    if ( fd < 0 ) {
+        printk( "sys_read: fd error.\n" );
+        return -1;
+    }
+    ASSERT( buf != NULL );
+    uint32_t _fd = fd_local2global( fd );
+    return file_read( &file_table[ _fd ], buf, count );
+}
+
+// get fd file size
+int32_t sys_getsize( int32_t fd ) {
+    uint32_t _fd = fd_local2global( fd );
+    PFILE pf = &file_table[ _fd ];
+    int32_t size = ( int32_t )pf->fd_inode->i_size;
+    return size;
+}
+
+// reset offset pointer of fd
+int32_t sys_lseek( int32_t fd, int32_t offset, uint8_t whence ) {
+    if ( fd < 0 ) {
+        printk( "sys_lseek: fd error\n" );
+        return -1;
+    }
+    ASSERT( whence > 0 && whence < 4 );
+    uint32_t _fd = fd_local2global( fd );
+    PFILE pf = &file_table[ _fd ];
+    int32_t new_pos = 0;
+    int32_t file_size = ( int32_t )pf->fd_inode->i_size;  // get file size
+    switch ( whence ) {
+    // SEEK_SET : file_head + offset
+    case SEEK_SET:
+        new_pos = offset;
+        break;
+
+    // SEEK_CUR : current pos + offset
+    case SEEK_CUR:
+        new_pos = ( int32_t )pf->fd_pos + offset;
+        break;
+
+    // SEEK_END file size + offset
+    case SEEK_END:  // offset is negative
+        new_pos = file_size + offset;
+    }
+    if ( new_pos < 0 || new_pos > ( file_size - 1 ) ) {  // new position must in file
+        return -1;
+    }
+    pf->fd_pos = new_pos;
+    return pf->fd_pos;
 }
 
 // search file system in the disk
