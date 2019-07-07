@@ -59,13 +59,27 @@ int main() {
     sys_close( fd );
     printf( "%d is closed\n", fd );
     */
-    int32_t res = sys_unlink( "/test" );
-    printf( "/test file deleted %s\n", ( res == 0 ) ? "Successfully!" : "Failed" );
+    // int32_t res = sys_unlink( "/test" );
+    // printf( "/test file deleted %s\n", ( res == 0 ) ? "Successfully!" : "Failed" );
     /* console_put_str(" main_pid:0x");
     console_put_int(sys_getpid());
     console_put_char('\n');*/
     // thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
     // thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
+    printf( "firstly, /work/happydir create %s!\n", sys_mkdir( "/work/happydir" ) == 0 ? "successfully" : "fail" );
+    printf( "now, /work create %s!\n", sys_mkdir( "/work" ) == 0 ? "done" : "fail" );
+    printf( "now, /work/happydir create %s!\n", sys_mkdir( "/work/happydir" ) == 0 ? "successfully" : "fail" );
+    int fd = sys_open( "/work/happydir/file2", O_CREAT | O_RDWR );
+    if ( fd != -1 ) {
+        printf( "here, /work/happydir/file2 create done!\n" );
+        sys_write( fd, "Secret msg:Catch me if you can!\n", 32 );
+        sys_lseek( fd, 0, SEEK_SET );
+        char buf[ 40 ] = {0};
+        sys_read( fd, buf, 40 );
+        printf( "finally, /work/happydir/file2 says:\n%s\n", buf );
+        sys_close( fd );
+    }
+
     while ( 1 ) {
         // console_put_str("Main ");
     }
