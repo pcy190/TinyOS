@@ -1,5 +1,6 @@
 #include "console.h"
 #include "debug.h"
+#include "dir.h"
 #include "fs.h"
 #include "init.h"
 #include "interrupt.h"
@@ -11,6 +12,7 @@
 #include "syscall-init.h"
 #include "syscall.h"
 #include "thread.h"
+
 
 void kernel_thread_function( void* );
 void kernel_thread_functionB( void* arg );
@@ -33,51 +35,43 @@ int main() {
 
     // intr_enable();
     /*
-    uint32_t fd = sys_open( "/test", O_RDWR );
-    printf( "opened the fd:%d file\n", fd );
-    // char output[] = "hello,This is HAPPY\n";
-    // sys_write( fd, output, 20 );
-     char buf[ 64 ] = {0};
-    int read_bytes_number = sys_read( fd, buf, 13 );
-    printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
+        printf( "firstly, /work/happydir create %s!\n", sys_mkdir( "/work/happydir" ) == 0 ? "successfully" : "fail" );
+        printf( "now, /work create %s!\n", sys_mkdir( "/work" ) == 0 ? "done" : "fail" );
+        printf( "now, /work/happydir create %s!\n", sys_mkdir( "/work/happydir" ) == 0 ? "successfully" : "fail" );
+        int fd = sys_open( "/work/happydir/file2", O_CREAT | O_RDWR );
+        if ( fd != -1 ) {
+            printf( "here, /work/happydir/file2 create done!\n" );
+            sys_write( fd, "Secret msg:Catch me if you can!\n", 32 );
+            sys_lseek( fd, 0, SEEK_SET );
+            char buf[ 40 ] = {0};
+            sys_read( fd, buf, 40 );
+            printf( "finally, /work/happydir/file2 says:\n%s\n", buf );
+            sys_close( fd );
+        }*/
+    /*
+    PDIR p_dir = sys_opendir( "/work/happydir" );
+    if ( p_dir ) {
+        printf( "/work/happydir open done!\n" );
+        if ( sys_closedir( p_dir ) == 0 ) {
+            printf( "/work/happydir close done!\n" );
+        } else {
+            printf( "/work/happydir close fail!\n" );
+        }
+    } else {
+        printf( "/work/happydir open fail!\n" );
+    }*/
 
-    memset( buf, 0, sizeof( buf ) );
-    read_bytes_number = sys_read( fd, buf, 6 );
-    printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
-
-    memset( buf, 0, sizeof( buf ) );
-    read_bytes_number = sys_read( fd, buf, 20 );
-    printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
-
-    printf( "Now seek set position-----\n" );
-    sys_lseek( fd, 0, SEEK_SET );
-
-    memset( buf, 0, sizeof( buf ) );
-    read_bytes_number = sys_read( fd, buf, 40 );
-    printf( "read from test file %d bytes.\n Content: %s\n", read_bytes_number, buf );
-
-    sys_close( fd );
-    printf( "%d is closed\n", fd );
-    */
-    // int32_t res = sys_unlink( "/test" );
-    // printf( "/test file deleted %s\n", ( res == 0 ) ? "Successfully!" : "Failed" );
-    /* console_put_str(" main_pid:0x");
-    console_put_int(sys_getpid());
-    console_put_char('\n');*/
-    // thread_start("k_thread_a", 31, kernel_thread_function, "argA ");
-    // thread_start("k_thread_b", 31, kernel_thread_functionB, "argB ");
-    printf( "firstly, /work/happydir create %s!\n", sys_mkdir( "/work/happydir" ) == 0 ? "successfully" : "fail" );
-    printf( "now, /work create %s!\n", sys_mkdir( "/work" ) == 0 ? "done" : "fail" );
-    printf( "now, /work/happydir create %s!\n", sys_mkdir( "/work/happydir" ) == 0 ? "successfully" : "fail" );
-    int fd = sys_open( "/work/happydir/file2", O_CREAT | O_RDWR );
-    if ( fd != -1 ) {
-        printf( "here, /work/happydir/file2 create done!\n" );
-        sys_write( fd, "Secret msg:Catch me if you can!\n", 32 );
-        sys_lseek( fd, 0, SEEK_SET );
-        char buf[ 40 ] = {0};
-        sys_read( fd, buf, 40 );
-        printf( "finally, /work/happydir/file2 says:\n%s\n", buf );
-        sys_close( fd );
+    PDIR pdir = sys_opendir( "/work/happydir" );
+    if ( pdir ) {
+        PDIR_ENTRY dire = NULL;
+        while ( dire = sys_readdir( pdir ) ) {
+            printf( "%s : %s\n", dire->filename == FT_REGULAR ? "regular" : "directory", dire->filename );
+        }
+        if ( sys_closedir( pdir ) == 0 ) {
+            printf( "Close dir successfully\n" );
+        } else {
+            printf( "Close dir fail\n" );
+        }
     }
 
     while ( 1 ) {

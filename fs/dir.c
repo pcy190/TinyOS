@@ -317,3 +317,59 @@ bool delete_dir_entry( PPARTITION part, PDIR pdir, uint32_t inode_no, void* io_b
     // cannot found in each loop, return false
     return false;
 }
+
+// read dir entry
+// return one dir entry if success
+// return NULL if fail
+PDIR_ENTRY dir_read( PDIR dir ) {
+    PDIR_ENTRY dir_e = ( PDIR_ENTRY )dir->dir_buf;
+    PINODE dir_inode = dir->inode;
+    uint32_t all_blocks[ 140 ] = {0}, block_cnt = 12;
+    uint32_t block_idx = 0, dir_entry_idx = 0;
+
+    // save blocks to all_blocks
+    while ( block_idx < 12 ) {
+        all_blocks[ block_idx ] = dir_inode->i_sectors[ block_idx ];
+        block_idx++;
+    }
+    if ( dir_inode->i_sectors[ 12 ] != 0 ) {
+        ide_read( cur_part->my_disk, dir_inode->i_sectors[ 12 ], all_blocks + 12, 1 );
+        block_cnt = 140;
+    }
+    block_idx = 0;
+
+    uint32_t current_dir_entry_pos = 0;
+    uint32_t dir_entry_size = cur_part->sb->dir_entry_size;
+    uint32_t dir_entrys_per_sector = SECTOR_SIZE / dir_entry_size;
+
+    // iterate all blocks because the dir entry cannot ensure continuity
+    while ( block_idx < block_cnt ) {
+        if ( dir->dir_pos >= dir_inode->i_size ) {
+            return NULL;
+        }
+        if ( all_blocks[ block_idx ] == 0 ) {  // skip empty block
+            block_idx++;
+            continue;
+        }
+        memset( dir_e, 0, SECTOR_SIZE );
+        ide_read( cur_part->my_disk, all_blocks[ block_idx ], dir_e, 1 );
+        dir_entry_idx = 0;
+        // iterate all dir entry in sector
+        while ( dir_entry_idx < dir_entrys_per_sector ) {
+            if ( ( dir_e + dir_entry_idx )->f_type ) {  // f_type !=0 ( i.e. f_type != FT_UNKNOWN)
+                // judge if the dir entry is read. skip dir which has been read.
+                if ( current_dir_entry_pos < dir->dir_pos ) {
+                    current_dir_entry_pos += dir_entry_size;
+                    dir_entry_idx++;
+                    continue;
+                }
+                ASSERT( current_dir_entry_pos == dir->dir_pos );
+                dir->dir_pos += dir_entry_size;  // update dir position
+                return dir_e + dir_entry_idx;
+            }
+            dir_entry_idx++;
+        }
+        block_idx++;
+    }
+    return NULL;
+}

@@ -637,6 +637,56 @@ rollback:
     return -1;
 }
 
+// open dir
+// return dir pointer if success
+// return NULL if fail
+PDIR sys_opendir( const char* name ) {
+    ASSERT( strlen( name ) < MAX_PATH_LEN );
+    // judge the root dir
+    if ( name[ 0 ] == '/' && ( name[ 1 ] == 0 || name[ 0 ] == '.' ) ) {
+        return &root_dir;
+    }
+
+    // check path existence
+    PATH_SEARCH_RECORD searched_record;
+    memset( &searched_record, 0, sizeof( PATH_SEARCH_RECORD ) );
+    int inode_no = search_file( name, &searched_record );
+    PDIR ret = NULL;
+    if ( inode_no == -1 ) {
+        // if dir not find, prompt the nonexistent dir path
+        printk( "In %s, sub path %s not exist\n", name, searched_record.searched_path );
+    } else {
+        if ( searched_record.file_type == FT_REGULAR ) {
+            printk( "%s is regular file!\n", name );
+        } else if ( searched_record.file_type == FT_DIRECTORY ) {
+            ret = dir_open( cur_part, inode_no );
+        }
+    }
+    dir_close( searched_record.parent_dir );
+    return ret;
+}
+
+// return 0 if successfully close dir
+// return -1 if fail
+int32_t sys_closedir( PDIR dir ) {
+    int32_t ret = -1;
+    if ( dir != NULL ) {
+        dir_close( dir );
+        ret = 0;
+    }
+    return ret;
+}
+
+// read one of the dir_entry of dir
+// return NULL if fail
+PDIR_ENTRY sys_readdir( PDIR dir ) {
+    ASSERT( dir != NULL );
+    return dir_read( dir );
+}
+
+// reset dir_pos of dir entry as 0
+void sys_rewinddir( PDIR dir ) { dir->dir_pos = 0; }
+
 // search file system in the disk
 // create file system if not found
 void filesys_init( void ) {

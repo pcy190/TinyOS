@@ -6,3 +6,4 @@
 build/
 hd.img
 !.travis.yml
+.clang-format

@@ -48,4 +48,8 @@ int32_t sys_lseek( int32_t fd, int32_t offset, uint8_t whence );
 int32_t sys_getsize( int32_t fd );
 int32_t sys_unlink( const char* pathname );
 int32_t sys_mkdir( const char* pathname );
+struct _DIR* sys_opendir( const char* name );
+int32_t sys_closedir( struct _DIR* dir );
+struct _DIR_ENTRY* sys_readdir( struct _DIR* dir );
+void sys_rewinddir( struct _DIR* dir );
 #endif  // __FS_FS_H
