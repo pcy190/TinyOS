@@ -687,6 +687,36 @@ PDIR_ENTRY sys_readdir( PDIR dir ) {
 // reset dir_pos of dir entry as 0
 void sys_rewinddir( PDIR dir ) { dir->dir_pos = 0; }
 
+// remove empty dir
+// return 0 if success, otherwise return -1 if fail
+int32_t sys_rmdir( const char* pathname ) {
+    // check exist
+    PATH_SEARCH_RECORD searched_record;
+    memset( &searched_record, 0, sizeof( PATH_SEARCH_RECORD ) );
+    int inode_no = search_file( pathname, &searched_record );
+    ASSERT( inode_no != 0 );
+    int retval = -1;  // default fail
+    if ( inode_no == -1 ) {
+        printk( "In %s, sub path %s not exist\n", pathname, searched_record.searched_path );
+    } else {
+        if ( searched_record.file_type == FT_REGULAR ) {
+            printk( "%s is regular file!\n", pathname );
+        } else {
+            struct dir* dir = dir_open( cur_part, inode_no );
+            if ( !dir_is_empty( dir ) ) {
+                printk( "dir %s is not empty, cannot delete a nonempty directory!\n", pathname );
+            } else {
+                if ( !dir_remove( searched_record.parent_dir, dir ) ) {
+                    retval = 0;
+                }
+            }
+            dir_close( dir );
+        }
+    }
+    dir_close( searched_record.parent_dir );
+    return retval;
+}
+
 // search file system in the disk
 // create file system if not found
 void filesys_init( void ) {

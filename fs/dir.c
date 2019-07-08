@@ -373,3 +373,36 @@ PDIR_ENTRY dir_read( PDIR dir ) {
     }
     return NULL;
 }
+
+// check whether dir is empty
+bool dir_is_empty( PDIR dir ) {
+    PINODE dir_inode = dir->inode;
+    // if only has . and .. these two dir entry, the dir is empty
+    return ( dir_inode->i_size == cur_part->sb->dir_entry_size * 2 );
+}
+
+// delete child_dir in parent dir
+int32_t dir_remove( PDIR parent_dir, PDIR child_dir ) {
+    PINODE child_dir_inode = child_dir->inode;
+    // check child_dir is empty or not
+    // if the dir is empty, only inode->i_sectors[0] has data, other sector should be empty(NULL)
+    int32_t block_idx = 1;
+    while ( block_idx < 13 ) {
+        ASSERT( child_dir_inode->i_sectors[ block_idx ] == 0 );
+        block_idx++;
+    }
+    void* io_buf = sys_malloc( SECTOR_SIZE * 2 );
+    // TODO : sector size optimize
+    if ( io_buf == NULL ) {
+        printk( "dir_remove: malloc io_buf failed\n" );
+        return -1;
+    }
+
+    // delete child dir entry in parent directory
+    delete_dir_entry( cur_part, parent_dir, child_dir_inode->i_number, io_buf );
+
+    // release sectors and sync inode and block bitmap
+    inode_release( cur_part, child_dir_inode->i_number );
+    sys_free( io_buf );
+    return 0;
+}

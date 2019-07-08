@@ -13,7 +13,6 @@
 #include "syscall.h"
 #include "thread.h"
 
-
 void kernel_thread_function( void* );
 void kernel_thread_functionB( void* arg );
 void u_prog_a( void );
@@ -73,7 +72,31 @@ int main() {
             printf( "Close dir fail\n" );
         }
     }
-
+    pdir = sys_opendir( "/work/happydir" );
+    if ( sys_rmdir( "/work/happydir" ) == 0 ) {
+        printf( "rmdir /work/happydir successfully\n" );
+    } else {
+        printf( "fail to rmdir /work/happydir\n" );
+    }
+    printf( "Now we delete the file\n" );
+    sys_unlink( "/work/happydir/file2" );
+    if ( sys_rmdir( "/work/happydir" ) == 0 ) {
+        printf( "rmdir /work/happydir successfully\n" );
+    } else {
+        printf( "fail to rmdir /work/happydir\n" );
+    }
+    printf( "Now we try to ls again." );
+    if ( pdir ) {
+        PDIR_ENTRY dire = NULL;
+        while ( dire = sys_readdir( pdir ) ) {
+            printf( "%s : %s\n", dire->filename == FT_REGULAR ? "regular" : "directory", dire->filename );
+        }
+        if ( sys_closedir( pdir ) == 0 ) {
+            printf( "Close dir successfully\n" );
+        } else {
+            printf( "Close dir fail\n" );
+        }
+    }
     while ( 1 ) {
         // console_put_str("Main ");
     }

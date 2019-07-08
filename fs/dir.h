@@ -31,4 +31,7 @@ bool search_dir_entry( PPARTITION part, PDIR pdir, const char* name, PDIR_ENTRY 
 void create_dir_entry( char* filename, uint32_t inode_no, uint8_t file_type, PDIR_ENTRY p_de );
 bool sync_dir_entry( PDIR parent_dir, PDIR_ENTRY p_de, void* io_buf );
 bool delete_dir_entry( PPARTITION part, PDIR pdir, uint32_t inode_no, void* io_buf );
+bool dir_is_empty( PDIR dir );
+int32_t dir_remove( PDIR parent_dir, PDIR child_dir );
+
 #endif  // __FS_DIR_H

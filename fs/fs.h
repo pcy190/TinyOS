@@ -52,4 +52,5 @@ struct _DIR* sys_opendir( const char* name );
 int32_t sys_closedir( struct _DIR* dir );
 struct _DIR_ENTRY* sys_readdir( struct _DIR* dir );
 void sys_rewinddir( struct _DIR* dir );
+int32_t sys_rmdir( const char* pathname );
 #endif  // __FS_FS_H
