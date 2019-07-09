@@ -49,7 +49,7 @@ static bool mount_partition( PLIST_NODE pelem, void* arg ) {
         /********************************************************************/
 
         /**********     read inode bitmap from disk to memory    ************/
-        printk( "Going to malloc %d  %d\n", sb_buf->inode_bitmap_sectors, sb_buf->inode_bitmap_sectors * SECTOR_SIZE );
+        // printk( "Going to malloc %d  %d\n", sb_buf->inode_bitmap_sectors, sb_buf->inode_bitmap_sectors * SECTOR_SIZE );
         cur_part->inode_bitmap.bits = ( uint8_t* )sys_malloc( sb_buf->inode_bitmap_sectors * SECTOR_SIZE );
         if ( cur_part->inode_bitmap.bits == NULL ) {
             PANIC( "alloc memory failed!" );
@@ -715,6 +715,140 @@ int32_t sys_rmdir( const char* pathname ) {
     }
     dir_close( searched_record.parent_dir );
     return retval;
+}
+
+// get parent dir inode
+// TODO : note io_buf should larger than a sector size
+static uint32_t get_parent_dir_inode_nr( uint32_t child_inode_nr, void* io_buf ) {
+    PINODE child_dir_inode = inode_open( cur_part, child_inode_nr );
+    // 0th dir entry .
+    // 1th dir entry ..
+    // get parent inode from dir ..
+    uint32_t block_lba = child_dir_inode->i_sectors[ 0 ];
+    ASSERT( block_lba >= cur_part->sb->data_start_lba );
+    inode_close( child_dir_inode );
+    ide_read( cur_part->my_disk, block_lba, io_buf, 1 );
+    PDIR_ENTRY dir_e = ( PDIR_ENTRY )io_buf;
+
+    ASSERT( dir_e[ 1 ].i_no < 4096 && dir_e[ 1 ].f_type == FT_DIRECTORY );
+    return dir_e[ 1 ].i_no;
+}
+
+// get c_inode_nr dir name in the parent p_inode_nr dir
+// return 0 and store name to io_buf if success
+// return -1 if fail
+// TODO : io_buf length check
+static int get_child_dir_name( uint32_t p_inode_nr, uint32_t c_inode_nr, char* path, void* io_buf ) {
+    PINODE parent_dir_inode = inode_open( cur_part, p_inode_nr );
+    // store blocks address to all_blocks
+    uint8_t block_idx = 0;
+    uint32_t all_blocks[ 140 ] = {0}, block_cnt = 12;
+    while ( block_idx < 12 ) {
+        all_blocks[ block_idx ] = parent_dir_inode->i_sectors[ block_idx ];
+        block_idx++;
+    }
+    if ( parent_dir_inode->i_sectors[ 12 ] ) {
+        ide_read( cur_part->my_disk, parent_dir_inode->i_sectors[ 12 ], all_blocks + 12, 1 );
+        block_cnt = 140;
+    }
+    inode_close( parent_dir_inode );
+
+    PDIR_ENTRY dir_e = ( PDIR_ENTRY )io_buf;
+    uint32_t dir_entry_size = cur_part->sb->dir_entry_size;
+    uint32_t dir_entrys_per_sec = ( 512 / dir_entry_size );
+    block_idx = 0;
+
+    while ( block_idx < block_cnt ) {
+        if ( all_blocks[ block_idx ] ) {
+            ide_read( cur_part->my_disk, all_blocks[ block_idx ], io_buf, 1 );
+            uint8_t dir_e_idx = 0;
+            while ( dir_e_idx < dir_entrys_per_sec ) {
+                if ( ( dir_e + dir_e_idx )->i_no == c_inode_nr ) {
+                    strcat( path, "/" );
+                    strcat( path, ( dir_e + dir_e_idx )->filename );
+                    return 0;
+                }
+                dir_e_idx++;
+            }
+        }
+        block_idx++;
+    }
+    return -1;
+}
+
+// store current absolute path to buf.
+// buf : buffer
+// size : given buffer length
+// return NULL if fail
+char* sys_getcwd( char* buf, uint32_t size ) {
+    // TODO : size check and buf zero check
+    // if buf is NULL, system should alloc path buffer memory and return addresss
+
+    // check buffer
+    ASSERT( buf != NULL );
+    void* io_buf = sys_malloc( SECTOR_SIZE );
+    if ( io_buf == NULL ) {
+        return NULL;
+    }
+
+    PTASK_STRUCT cur_thread = running_thread();
+    int32_t parent_inode_nr = 0;
+    int32_t child_inode_number = cur_thread->cwd_inode_number;
+    ASSERT( child_inode_number >= 0 && child_inode_number < 4096 );  // maximum support 4096 inodes
+    // return / if root directory ( i.e. inode==0)
+    if ( child_inode_number == 0 ) {
+        if ( size < 2 )
+            return NULL;
+        buf[ 0 ] = '/';
+        buf[ 1 ] = 0;
+        return buf;
+    }
+
+    memset( buf, 0, size );
+    char full_path_reverse[ MAX_PATH_LEN ] = {0};  // buffer
+
+    // iterater from child to parent until the root dir ( inode ==0 )
+
+    while ( ( child_inode_number ) ) {
+        parent_inode_nr = get_parent_dir_inode_nr( child_inode_number, io_buf );
+        if ( get_child_dir_name( parent_inode_nr, child_inode_number, full_path_reverse, io_buf ) == -1 ) {
+            sys_free( io_buf );
+            return NULL;
+        }
+        child_inode_number = parent_inode_nr;
+    }
+    ASSERT( strlen( full_path_reverse ) <= size );
+
+    // we should reverse the full_path_reverse.
+    // in full_path_reverse, child dir is in font of parent dir
+    char* last_slash;
+    while ( ( last_slash = strrchr( full_path_reverse, '/' ) ) ) {
+        uint16_t len = strlen( buf );
+        strcpy( buf + len, last_slash );
+        *last_slash = 0;
+    }
+    sys_free( io_buf );
+    return buf;
+}
+
+// change current dir to path
+int32_t sys_chdir( const char* path ) {
+    int32_t ret = -1;
+    PATH_SEARCH_RECORD searched_record;
+    memset( &searched_record, 0, sizeof( PATH_SEARCH_RECORD ) );
+    int inode_no = search_file( path, &searched_record );
+    if ( inode_no != -1 ) {
+        if ( searched_record.file_type == FT_DIRECTORY ) {
+            running_thread()->cwd_inode_number = inode_no;
+            ret = 0;
+        } else {
+            printk( "sys_chdir: %s is regular file or other!\n", path );
+        }
+    } else {
+        printk( "sys_chdir: Cannot find %s dir\n", path );
+    }
+    dir_close( searched_record.parent_dir );
+    return ret;
 }
 
 // search file system in the disk

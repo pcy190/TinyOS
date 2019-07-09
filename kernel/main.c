@@ -59,7 +59,7 @@ int main() {
     } else {
         printf( "/work/happydir open fail!\n" );
     }*/
-
+    /*
     PDIR pdir = sys_opendir( "/work/happydir" );
     if ( pdir ) {
         PDIR_ENTRY dire = NULL;
@@ -96,7 +96,16 @@ int main() {
         } else {
             printf( "Close dir fail\n" );
         }
-    }
+    }*/
+
+    char cwd_buf[ 32 ] = {0};
+    sys_getcwd( cwd_buf, 32 );
+    printf( "cwd:%s\n", cwd_buf );
+    sys_chdir( "/work" );
+    printf( "After change dir\n" );
+    sys_getcwd( cwd_buf, 32 );
+    printf( "cwd:%s\n", cwd_buf );
+
     while ( 1 ) {
         // console_put_str("Main ");
     }

@@ -100,7 +100,7 @@ void init_thread(PTASK_STRUCT pthread, char *name, int priority) {
     pthread->fd_table[fd_idx] = -1;
     fd_idx++;
   }
-
+  pthread->cwd_inode_number = 0;
   // todo --canary!
   pthread->canary = 0x19870916;
   // pthread->canary = cannary;

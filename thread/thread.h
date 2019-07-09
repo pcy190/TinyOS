@@ -95,6 +95,7 @@ typedef struct _TASK_STRUCT {
 
     VISUAL_ADDRESS userprog_vaddr;  // 用户进程的虚拟地址
     MEM_BLOCK_DESC u_block_desc[ DESC_CNT ];
+    uint32_t cwd_inode_number;
     uint32_t canary;  // 用这串数字做栈的边界标记,用于检测栈的溢出
 } TASK_STRUCT, *PTASK_STRUCT;
 
