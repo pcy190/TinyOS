@@ -19,13 +19,13 @@ typedef enum _POOL_FLAGS
 #define PG_US_U 4 // U/S , User
 
 
-typedef struct _VISUAL_ADDRESS
+typedef struct _VIRTUAL_ADDRESS
 {
    //bitmap record the VA is used or not. Page Size
    struct bitmap vaddr_bitmap;
    //virtual address
    uint32_t vaddr_start;
-} VISUAL_ADDRESS;
+} VIRTUAL_ADDRESS;
 
 typedef struct _MEM_BLOCK{
    LIST_NODE free_node;

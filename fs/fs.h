@@ -37,6 +37,13 @@ typedef struct _PATH_SEARCH_RECORD {
     FILE_TYPES file_type;                // file type
 } PATH_SEARCH_RECORD, *PPATH_SEARCH_RECORD;
 
+// file property
+typedef struct _STAT {
+    uint32_t st_ino;         // inode number
+    uint32_t st_size;        // size
+    FILE_TYPES st_filetype;  // file type
+} STAT, *PSTAT;
+
 extern PPARTITION cur_part;
 void filesys_init( void );
 int32_t path_depth_cnt( char* pathname );
@@ -55,4 +62,5 @@ void sys_rewinddir( struct _DIR* dir );
 int32_t sys_rmdir( const char* pathname );
 char* sys_getcwd( char* buf, uint32_t size );
 int32_t sys_chdir( const char* path );
+int32_t sys_stat( const char* path, PSTAT buf );
 #endif  // __FS_FS_H

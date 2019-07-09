@@ -43,7 +43,7 @@ typedef struct _ARENA {
 
 MEM_BLOCK_DESC k_block_descs[DESC_CNT];
 POOL kernel_pool, user_pool;
-VISUAL_ADDRESS kernel_vaddr; // malloc for kernel
+VIRTUAL_ADDRESS kernel_vaddr; // malloc for kernel
 
 // malloc pg_cnt size pages in PF)
 // return VA if success

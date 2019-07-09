@@ -97,15 +97,20 @@ int main() {
             printf( "Close dir fail\n" );
         }
     }*/
-
-    char cwd_buf[ 32 ] = {0};
-    sys_getcwd( cwd_buf, 32 );
-    printf( "cwd:%s\n", cwd_buf );
-    sys_chdir( "/work" );
-    printf( "After change dir\n" );
-    sys_getcwd( cwd_buf, 32 );
-    printf( "cwd:%s\n", cwd_buf );
-
+    /*
+        char cwd_buf[ 32 ] = {0};
+        sys_getcwd( cwd_buf, 32 );
+        printf( "cwd:%s\n", cwd_buf );
+        sys_chdir( "/work" );
+        printf( "After change dir\n" );
+        sys_getcwd( cwd_buf, 32 );
+        printf( "cwd:%s\n", cwd_buf );*/
+    STAT stat_res;
+    sys_stat( "/", &stat_res );
+    printf( "root dir info:\n   i_no:%d\n   size:%d\n   filetype:%s\n", stat_res.st_ino, stat_res.st_size, stat_res.st_filetype == 2 ? "directory" : "regular" );
+    sys_stat( "/work", &stat_res );
+    printf( "work dir info:\n   i_no:%d\n   size:%d\n   filetype:%s\n", stat_res.st_ino, stat_res.st_size, stat_res.st_filetype == 2 ? "directory" : "regular" );
+   
     while ( 1 ) {
         // console_put_str("Main ");
     }
