@@ -1,5 +1,6 @@
 #include "thread.h"
 #include "debug.h"
+#include "global.h"
 #include "interrupt.h"
 #include "list.h"
 #include "memory.h"
@@ -7,32 +8,28 @@
 #include "process.h"
 #include "stdint.h"
 #include "string.h"
-#include "global.h"
 #include "sync.h"
-
 
 #include "console.h"
 
-//extern uint32_t cannary;
+// extern uint32_t cannary;
 PTASK_STRUCT main_thread; // main thread PCB  (FROM KERNEL)
 PTASK_STRUCT idle_thread; // idle thread
 LIST thread_ready_list;
 LIST thread_all_list;
-LOCK pid_lock;		    // pid lock
+LOCK pid_lock;                // pid lock
 static PLIST_NODE thread_tag; // thread node in queue
 
 extern void switch_to(PTASK_STRUCT cur, PTASK_STRUCT next);
 
 // idle thread
-static void idle(void* arg UNUSED) {
-   while(1) {
-      thread_block(TASK_BLOCKED);     
-      //ensure intr open before hlt
-      asm volatile ("sti; hlt" : : : "memory");
-   }
+static void idle(void *arg UNUSED) {
+  while (1) {
+    thread_block(TASK_BLOCKED);
+    // ensure intr open before hlt
+    asm volatile("sti; hlt" : : : "memory");
+  }
 }
-
-
 
 // get current thread PCB pointer
 PTASK_STRUCT get_running_thread() {
@@ -53,15 +50,14 @@ static void kernel_thread(PTHREAD_FUNCRION function, void *func_argc) {
   function(func_argc);
 }
 
-//allocate_pid
-static pid_t allocate_pid(){
-  static pid_t next_pid=0;
+// allocate_pid
+static pid_t allocate_pid() {
+  static pid_t next_pid = 0;
   lock_acquire(&pid_lock);
   next_pid++;
   lock_release(&pid_lock);
   return next_pid;
 }
-
 
 // set TASK_STRUCT ready
 void thread_create(PTASK_STRUCT pthread, THREAD_FUNCRION function, void *argc) {
@@ -73,15 +69,14 @@ void thread_create(PTASK_STRUCT pthread, THREAD_FUNCRION function, void *argc) {
   kthread_stack->function = function;
   kthread_stack->func_arg = argc;
   kthread_stack->ebp = kthread_stack->ebx = kthread_stack->esi =
-      kthread_stack->edi=0;
+      kthread_stack->edi = 0;
 }
 
 // set name and priority.
 // init canary and stack point;
-void init_thread(PTASK_STRUCT pthread, char *name,
-                                int priority) {
+void init_thread(PTASK_STRUCT pthread, char *name, int priority) {
   memset(pthread, 0, sizeof(*pthread));
-  pthread->pid=allocate_pid();
+  pthread->pid = allocate_pid();
   strcpy(pthread->name, name); // name len<=32
   if (pthread == main_thread) {
     /* main is also a thread, its status is always TASK_RUNNING */
@@ -94,9 +89,21 @@ void init_thread(PTASK_STRUCT pthread, char *name,
   pthread->ticks = priority;
   pthread->elapsed_ticks = 0;
   pthread->pgdir = NULL;
-  //todo --canary!
+
+  // reserve FD for stdin stdout stderr
+  pthread->fd_table[0] = 0;
+  pthread->fd_table[1] = 1;
+  pthread->fd_table[2] = 2;
+  // other fd set as -1
+  uint8_t fd_idx = 3;
+  while (fd_idx < MAX_FILES_OPEN_PER_PROC) {
+    pthread->fd_table[fd_idx] = -1;
+    fd_idx++;
+  }
+  pthread->cwd_inode_number = 0;
+  // todo --canary!
   pthread->canary = 0x19870916;
-  //pthread->canary = cannary;
+  // pthread->canary = cannary;
 }
 
 // create a thread and make it ready to run
@@ -149,14 +156,14 @@ void schedule() {
 
   // if no running thread, then unblock idle
   if (list_empty(&thread_ready_list)) {
-      thread_unblock(idle_thread);
-   }
+    thread_unblock(idle_thread);
+  }
 
   ASSERT(!list_empty(&thread_ready_list));
   // schedule next thread task in queue to run
   // current running thread isn't in task queue
-  //thread_tag = list_pop(&thread_ready_list);
-  thread_tag = NULL;	 
+  // thread_tag = list_pop(&thread_ready_list);
+  thread_tag = NULL;
   thread_tag = list_pop(&thread_ready_list);
 
   PTASK_STRUCT next = elem2entry(TASK_STRUCT, general_tag, thread_tag);
@@ -195,15 +202,14 @@ void thread_unblock(PTASK_STRUCT pthread) {
 
 // yield thread, release CPU and switch to other thread
 void thread_yield(void) {
-   PTASK_STRUCT cur = running_thread();   
-   INTR_STATUS old_status = intr_disable();
-   ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
-   list_append(&thread_ready_list, &cur->general_tag);
-   cur->status = TASK_READY;
-   schedule();
-   intr_set_status(old_status);
+  PTASK_STRUCT cur = running_thread();
+  INTR_STATUS old_status = intr_disable();
+  ASSERT(!elem_find(&thread_ready_list, &cur->general_tag));
+  list_append(&thread_ready_list, &cur->general_tag);
+  cur->status = TASK_READY;
+  schedule();
+  intr_set_status(old_status);
 }
-
 
 void thread_init() {
   put_str("thread_init start\n");
@@ -219,13 +225,13 @@ void thread_init() {
   // }
   // cannary=res;
   // TODO : check canary
-  //put_str("Cannary is:");
-  //put_int(cannary);
-  //put_char('\n');
+  // put_str("Cannary is:");
+  // put_int(cannary);
+  // put_char('\n');
   list_init(&thread_ready_list);
   list_init(&thread_all_list);
   lock_init(&pid_lock);
   make_kernel_main_thread();
-  idle_thread= thread_start("idle",10,idle,NULL);
+  idle_thread = thread_start("idle", 10, idle, NULL);
   put_str("thread_init done\n");
 }

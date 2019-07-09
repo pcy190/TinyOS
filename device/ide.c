@@ -166,6 +166,8 @@ static bool busy_wait(PDISK hd) {
 
 // read sec_cnt sectors from disk to buf
 void ide_read(PDISK hd, uint32_t lba, void *buf, uint32_t sec_cnt) {
+  if(lba > max_lba)
+      printk( "IDE READ lba:%d\n", lba );
   ASSERT(lba <= max_lba);
   ASSERT(sec_cnt > 0);
   lock_acquire(&hd->my_channel->lock);

@@ -109,14 +109,11 @@ uint32_t printf(const char *format, ...) {
   vsprintf(buf, format, args);
   ASSERT(buf[1023] == 0);
   va_end(args);
-  return write(buf);
+  return write(1,buf,strlen(buf));
 }
 
 /*
 uint32_t printf_(const char *format, ...) {
-  // write("IN PRINTF");
-  // write("IN PRINTFs");
-
   va_list args;
   va_start(args, format); // make args points to format
                           //  check the length

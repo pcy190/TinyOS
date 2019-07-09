@@ -23,7 +23,7 @@ typedef struct _SUPER_BLOCK{
     uint32_t dir_entry_size;	    // dir entry size
 
     uint8_t padding[460];           // align to one sector size (4*13+460=512)
-} __attribute__ ((packed)) SUPER_BLOCK,*PSUPER_BLOCK;
+} __attribute__((packed)) SUPER_BLOCK,*PSUPER_BLOCK  ;
 
 
 
