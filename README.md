@@ -36,11 +36,12 @@ Who knows. 🙂
 - input&output
 - system call handler(pid,printf,etc.)
 - disk driver (partition identify, format.)
+- file system
 
 # 🔨Working
-- file system (HUGE TASK~)
+- fork & shell
 
 # 🏳️‍🌈TODO
-- shell&tube
+- tube
 
 
