@@ -19,7 +19,7 @@ OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
 	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o \
 	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o $(BUILD_PATH)/process.o \
 	   $(BUILD_PATH)/syscall-init.o $(BUILD_PATH)/syscall.o $(BUILD_PATH)/stdio.o $(BUILD_PATH)/stdio-kernel.o $(BUILD_PATH)/ide.o \
-	   $(BUILD_PATH)/fs.o $(BUILD_PATH)/file.o $(BUILD_PATH)/dir.o $(BUILD_PATH)/inode.o
+	   $(BUILD_PATH)/fs.o $(BUILD_PATH)/file.o $(BUILD_PATH)/dir.o $(BUILD_PATH)/inode.o $(BUILD_PATH)/fork.o
 	   
 	 
 AS = nasm
@@ -119,6 +119,9 @@ $(BUILD_PATH)/tss.o: userprog/tss.c
 	$(CC) $(CFLAGS) $< -o $@
 	
 $(BUILD_PATH)/process.o: userprog/process.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/fork.o: userprog/fork.c
 	$(CC) $(CFLAGS) $< -o $@
 	
 $(BUILD_PATH)/syscall-init.o: userprog/syscall-init.c

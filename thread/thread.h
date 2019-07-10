@@ -88,7 +88,8 @@ typedef struct _TASK_STRUCT {
     VIRTUAL_ADDRESS userprog_vaddr;  // process va
     MEM_BLOCK_DESC u_block_desc[ DESC_CNT ];
     uint32_t cwd_inode_number;
-    uint32_t canary;  // canary
+    int16_t parent_pid;  // parent process pid
+    uint32_t canary;     // canary
 } TASK_STRUCT, *PTASK_STRUCT;
 
 extern LIST thread_ready_list;
@@ -105,4 +106,5 @@ void thread_init( void );
 void thread_block( enum task_status stat );
 void thread_unblock( PTASK_STRUCT pthread );
 void thread_yield( void );
+pid_t fork_pid( void );
 #endif
