@@ -9,7 +9,6 @@
 #include "string.h"
 #include "syscall.h"
 
-
 #define cmd_len 128        // maximum cmd char length
 #define MAX_ARG_NUMBER 16  // cmd +15 argv
 
@@ -125,14 +124,37 @@ void my_shell( void ) {
             continue;
         }
 
-        char buf[ MAX_PATH_LEN ] = {0};
+        /*char buf[ MAX_PATH_LEN ] = {0};
         int32_t arg_idx = 0;
         while ( arg_idx < argc ) {
             make_clear_abs_path( argv[ arg_idx ], buf );
             printf( "%s ---> %s", argv[ arg_idx ], buf );
             arg_idx++;
+        }*/
+
+        if ( !strcmp( "ls", argv[ 0 ] ) ) {
+            buildin_ls( argc, argv );
+        } else if ( !strcmp( "cd", argv[ 0 ] ) ) {
+            if ( buildin_cd( argc, argv ) != NULL ) {
+                memset( cwd_cache, 0, MAX_PATH_LEN );
+                strcpy( cwd_cache, final_path );
+            }
+        } else if ( !strcmp( "pwd", argv[ 0 ] ) ) {
+            buildin_pwd( argc, argv );
+        } else if ( !strcmp( "ps", argv[ 0 ] ) ) {
+            buildin_ps( argc, argv );
+        } else if ( !strcmp( "clear", argv[ 0 ] ) ) {
+            buildin_clear( argc, argv );
+        } else if ( !strcmp( "mkdir", argv[ 0 ] ) ) {
+            buildin_mkdir( argc, argv );
+        } else if ( !strcmp( "rmdir", argv[ 0 ] ) ) {
+            buildin_rmdir( argc, argv );
+        } else if ( !strcmp( "rm", argv[ 0 ] ) ) {
+            buildin_rm( argc, argv );
+        } else {
+            printf( "external command\n" );
         }
-        printf( "\n" );
+        //printf( "\n" );
     }
     panic( "my_shell: should not be here. This is end func\n" );
 }

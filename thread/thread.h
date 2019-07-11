@@ -107,4 +107,5 @@ void thread_block( enum task_status stat );
 void thread_unblock( PTASK_STRUCT pthread );
 void thread_yield( void );
 pid_t fork_pid( void );
+void sys_ps( void );
 #endif
