@@ -1,5 +1,7 @@
 #include "thread.h"
 #include "debug.h"
+#include "file.h"
+#include "fs.h"
 #include "global.h"
 #include "interrupt.h"
 #include "list.h"
@@ -207,6 +209,75 @@ void thread_yield( void ) {
     cur->status = TASK_READY;
     schedule();
     intr_set_status( old_status );
+}
+
+// print with align blank space
+static void pad_print( char* buf, int32_t buf_len, void* ptr, char format ) {
+    memset( buf, 0, buf_len );
+    uint8_t out_pad_0idx = 0;
+    switch ( format ) {
+    case 's':
+        out_pad_0idx = sprintf( buf, "%s", ptr );
+        break;
+    case 'd':
+        out_pad_0idx = sprintf( buf, "%d", *( ( int16_t* )ptr ) );
+    case 'x':
+        out_pad_0idx = sprintf( buf, "%x", *( ( uint32_t* )ptr ) );
+    }
+    while ( out_pad_0idx < buf_len ) {  // padding with blank space
+        buf[ out_pad_0idx ] = ' ';
+        out_pad_0idx++;
+    }
+    sys_write( FD_STDOUT, buf, buf_len - 1 );
+}
+
+// print thread info in list_traversal
+static bool elem2thread_info( struct list_elem* pelem, int arg UNUSED ) {
+    PTASK_STRUCT pthread = elem2entry( TASK_STRUCT, all_list_tag, pelem );
+    char out_pad[ 16 ] = {0};
+
+    pad_print( out_pad, 16, &pthread->pid, 'd' );
+
+    if ( pthread->parent_pid == -1 ) {
+        pad_print( out_pad, 16, "NULL", 's' );
+    } else {
+        pad_print( out_pad, 16, &pthread->parent_pid, 'd' );
+    }
+
+    switch ( pthread->status ) {
+    case TASK_RUNNING:
+        pad_print( out_pad, 16, "RUNNING", 's' );
+        break;
+    case TASK_READY:
+        pad_print( out_pad, 16, "READY", 's' );
+        break;
+    case TASK_BLOCKED:
+        pad_print( out_pad, 16, "BLOCKED", 's' );
+        break;
+    case TASK_WAITING:
+        pad_print( out_pad, 16, "WAITING", 's' );
+        break;
+    case TASK_HANGING:
+        pad_print( out_pad, 16, "HANGING", 's' );
+        break;
+    case TASK_DIED:
+        pad_print( out_pad, 16, "DIED", 's' );
+    }
+    pad_print( out_pad, 16, &pthread->elapsed_ticks, 'x' );
+
+    memset( out_pad, 0, 16 );
+    ASSERT( strlen( pthread->name ) < 17 );
+    memcpy( out_pad, pthread->name, strlen( pthread->name ) );
+    strcat( out_pad, "\n" );
+    sys_write( FD_STDOUT, out_pad, strlen( out_pad ) );
+    return false;  // continue traversal
+}
+
+// print task list
+void sys_ps( void ) {
+    char* ps_title = "PID            PPID           STAT           TICKS          COMMAND\n";
+    sys_write( FD_STDOUT, ps_title, strlen( ps_title ) );
+    list_traversal( &thread_all_list, elem2thread_info, 0 );
 }
 
 void thread_init() {

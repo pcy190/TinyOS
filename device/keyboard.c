@@ -198,6 +198,7 @@ static void intr_keyboard_handler(void)
 
         if (cur_char)
         {
+            // TODO : shortcut keys support
             //Shortcut keys: ctrl+l ctrl+u
             if ((ctrl_down_last && cur_char == 'l') ||
                 (ctrl_down_last && cur_char == 'u'))
@@ -206,7 +207,7 @@ static void intr_keyboard_handler(void)
             }
             if (!ioq_full(&kbd_buf))
             {
-                put_char(cur_char); // TMP SHOW------------------------------------
+                //put_char(cur_char); // TMP SHOW------------------------------------
                 ioq_putchar(&kbd_buf, cur_char);
             }
             return;
