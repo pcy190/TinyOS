@@ -5,6 +5,7 @@
 #include "global.h"
 #include "ide.h"
 #include "inode.h"
+#include "keyboard.h"
 #include "list.h"
 #include "memory.h"
 #include "stdint.h"
@@ -198,7 +199,7 @@ static void partition_format( PPARTITION part ) {
 
 // parse the top path
 // strip repeated / char
-static char* path_parse( char* pathname, char* name_res ) {
+char* path_parse( char* pathname, char* name_res ) {
     uint32_t name_length = 0;
     if ( pathname[ 0 ] == '/' ) {  // parse and skip root directory
         while ( *( ++pathname ) == '/' )
@@ -419,13 +420,27 @@ int32_t sys_write( int32_t fd, const void* buf, uint32_t count ) {
 
 // read count bytes from fd file to buf.
 int32_t sys_read( int32_t fd, void* buf, uint32_t count ) {
-    if ( fd < 0 ) {
+    ASSERT( buf != NULL );
+    if ( fd < 0 || fd == FD_STDOUT || fd == FD_STDERR ) {
         printk( "sys_read: fd error.\n" );
         return -1;
+    } else if ( fd == FD_STDIN ) {
+        char* buffer = buf;
+        uint32_t bytes_read = 0;
+        while ( bytes_read < count ) {
+            *buffer = ioq_getchar( &kbd_buf );
+            bytes_read++;
+            buffer++;
+        }
+        return ( bytes_read == 0 ? -1 : ( int32_t )bytes_read );
+    } else {
+        uint32_t _fd = fd_local2global( fd );
+        return file_read( &file_table[ _fd ], buf, count );
     }
-    ASSERT( buf != NULL );
-    uint32_t _fd = fd_local2global( fd );
-    return file_read( &file_table[ _fd ], buf, count );
+}
+
+void sys_putchar(char target_char) {
+   console_put_char(target_char);
 }
 
 // get fd file size

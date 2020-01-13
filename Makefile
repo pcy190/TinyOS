@@ -5,7 +5,7 @@ ENTRY_POINT = 0xc0001500
 KERNEL_PATH:=./kernel
 DEVICE_PATH:=./device
 LIB_KERNEL_PATH= ./lib/kernel
-LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog/ -I fs/
+LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog/ -I fs/ -I shell/
 CFLAGS:= -c -m32  $(LIB) -fno-stack-protector -fno-builtin -Wall -W -Wstrict-prototypes -Wmissing-prototypes 
 # -W -Wmissing-prototypes -Wsystem-headers
 LDFLAGS = -Ttext $(ENTRY_POINT) -e main -m elf_i386
@@ -19,17 +19,18 @@ OBJS = $(BUILD_PATH)/main.o $(BUILD_PATH)/init.o $(BUILD_PATH)/interrupt.o \
 	   $(BUILD_PATH)/list.o $(BUILD_PATH)/switch.o $(BUILD_PATH)/sync.o $(BUILD_PATH)/console.o \
 	   $(BUILD_PATH)/ioqueue.o $(BUILD_PATH)/keyboard.o $(BUILD_PATH)/tss.o $(BUILD_PATH)/process.o \
 	   $(BUILD_PATH)/syscall-init.o $(BUILD_PATH)/syscall.o $(BUILD_PATH)/stdio.o $(BUILD_PATH)/stdio-kernel.o $(BUILD_PATH)/ide.o \
-	   $(BUILD_PATH)/fs.o $(BUILD_PATH)/file.o $(BUILD_PATH)/dir.o $(BUILD_PATH)/inode.o
+	   $(BUILD_PATH)/fs.o $(BUILD_PATH)/file.o $(BUILD_PATH)/dir.o $(BUILD_PATH)/inode.o $(BUILD_PATH)/fork.o $(BUILD_PATH)/shell.o \
+	   $(BUILD_PATH)/assert.o  $(BUILD_PATH)/buildin_cmd.o
 	   
 	 
 AS = nasm
 CC = gcc
 LD = ld
 
-.PHONY : mkdir run write clean build mk_dir restart clear_disk fdisk
+.PHONY : mkdir run write clean build mk_dir restart clear_disk fdisk fix
 
     
-run: write
+run: write fix
 	bochs -f bochsrc
 
 clear_disk:
@@ -63,7 +64,10 @@ mk_dir:
 	-mkdir build
 	#if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
 	
-		
+fix:
+	- rm *.lock		
+
+
 ### compile
 $(BUILD_PATH)/print.o: $(LIB_KERNEL_PATH)/print.S
 	$(AS) -f elf32 $< -o $@
@@ -120,6 +124,9 @@ $(BUILD_PATH)/tss.o: userprog/tss.c
 	
 $(BUILD_PATH)/process.o: userprog/process.c
 	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/fork.o: userprog/fork.c
+	$(CC) $(CFLAGS) $< -o $@
 	
 $(BUILD_PATH)/syscall-init.o: userprog/syscall-init.c
 	$(CC) $(CFLAGS) $< -o $@
@@ -146,6 +153,15 @@ $(BUILD_PATH)/dir.o: fs/dir.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_PATH)/fs.o: fs/fs.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/shell.o: shell/shell.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/assert.o: lib/user/assert.c
+	$(CC) $(CFLAGS) $< -o $@
+
+$(BUILD_PATH)/buildin_cmd.o: shell/buildin_cmd.c
 	$(CC) $(CFLAGS) $< -o $@
 
 $(BUILD_PATH)/kernel.bin: $(OBJS)
