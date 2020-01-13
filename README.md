@@ -29,7 +29,7 @@ make clean
 //Clean and run
 make restart
 
-If you have problem to compile with GCC m32, you can install libs to support gcc -m32 option
+If you have problem compiling GCC m32, install following libs to support gcc -m32 option
 ```
 sudo apt-get install build-essential module-assistant  
 sudo apt-get install gcc-multilib g++-multilib 
@@ -39,20 +39,21 @@ After `make run`, you need to input `c` in the bochs command line.
 If you want to exit the system, input `Ctrl+C` in the command line and input `quit`.
 
 
-# 🍊PS:
-Making something is but a lifestyle.
-Simplify on Linux0.11.
-Who knows. 🙂
-
 # 💡Achieved functions
 - basic memory control
 - basic thread schedule
 - input&output
 - system call handler(pid,printf,etc.)
 - disk driver
+- file system
+- executable file support
+- shell
 
 # 🏳️‍🌈TODO
-- file system (HUGE TASK~)
-- shell&tube
+- tube
 
+# 🍊PS:
+Making something is but a lifestyle.
+Simplify on Linux0.11.
+Who knows. 🙂
 
