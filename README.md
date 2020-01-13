@@ -3,9 +3,19 @@
 # 🧀TinyOS
 A tiny OS running on BOCHS
 
-# 🍉Require
+# 🍉Requirement
 1. Bochs (You can install it via `sudo apt install bochs` or [see it on my blog](https://www.jianshu.com/p/6b3df43932c3))
 2. Qemu. It is a powerful simulator.  (Get it via `sudo apt install qemu`)
+
+You can simply install all dependency packages by the following instructions
+```
+sudo apt-get install bochs bochs-x qemu
+sudo apt-get install xorg-dev 
+sudo apt-get install bison 
+sudo apt-get install g++ 
+sudo apt-get install build-essential module-assistant  
+sudo apt-get install gcc-multilib g++-multilib 
+```
 
 # 🍓Run
 ```
@@ -24,6 +34,10 @@ If you have problem to compile with GCC m32, you can install libs to support gcc
 sudo apt-get install build-essential module-assistant  
 sudo apt-get install gcc-multilib g++-multilib 
 ```
+
+After `make run`, you need to input `c` in the bochs command line.
+If you want to exit the system, input `Ctrl+C` in the command line and input `quit`.
+
 
 # 🍊PS:
 Making something is but a lifestyle.

@@ -27,10 +27,10 @@ AS = nasm
 CC = gcc
 LD = ld
 
-.PHONY : mkdir run write clean build mk_dir restart clear_disk fdisk
+.PHONY : mkdir run write clean build mk_dir restart clear_disk fdisk fix
 
     
-run: write
+run: write fix
 	bochs -f bochsrc
 
 clear_disk:
@@ -64,7 +64,10 @@ mk_dir:
 	-mkdir build
 	#if [ ! -d $(BUILD_DIR) ];then mkdir $(BUILD_DIR);fi
 	
-		
+fix:
+	- rm *.lock		
+
+
 ### compile
 $(BUILD_PATH)/print.o: $(LIB_KERNEL_PATH)/print.S
 	$(AS) -f elf32 $< -o $@

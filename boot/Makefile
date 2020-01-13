@@ -17,8 +17,11 @@ write: mbr.bin loader.bin hd.img
 	dd if=loader.bin of=$(TARGET_IMG_PATH) bs=512 count=4  seek=2 conv=notrunc
 
 clean:
-	rm -f *.bin bochs.out 
+	rm -f *.bin bochs.out
+	rm -f hd.img
 
 hd.img:
-	bximage -hd -mode="flat" -size=60 -q hd.img
-	mv hd.img $(TARGET_IMG_PATH)
+	- rm hd.img
+	#- bximage -hd -mode="flat" -size=60 -q hd.img
+	bximage < bximage_cmd.txt	
+	- mv hd.img $(TARGET_IMG_PATH)
