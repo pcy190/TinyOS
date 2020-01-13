@@ -24,10 +24,10 @@ make run
 
 //Clean workspace
 make clean
-```
 
 //Clean and run
 make restart
+```
 
 If you have problem compiling GCC m32, install following libs to support gcc -m32 option
 ```
@@ -43,11 +43,14 @@ If you want to exit the system, input `Ctrl+C` in the command line and input `qu
 - basic memory control
 - basic thread schedule
 - input&output
-- system call handler(pid,printf,etc.)
-- disk driver
+- system call handler(pid,printf,etc. )
+- disk driver (partition identify, format )
 - file system
 - executable file support
 - shell
+
+# 🔨Working
+- fork
 
 # 🏳️‍🌈TODO
 - tube
