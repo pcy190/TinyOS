@@ -67,6 +67,10 @@ mk_dir:
 fix:
 	- rm *.lock		
 
+bootstrap: build
+
+
+release: build
 
 ### compile
 $(BUILD_PATH)/print.o: $(LIB_KERNEL_PATH)/print.S
