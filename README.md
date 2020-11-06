@@ -1,4 +1,4 @@
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_shield) [![Build Status](https://travis-ci.com/pcy190/TinyOS.svg?branch=master)](https://travis-ci.com/pcy190/TinyOS)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  [![Build Status](https://travis-ci.com/pcy190/TinyOS.svg?branch=master)](https://travis-ci.com/pcy190/TinyOS)  ![CodeQL](https://github.com/pcy190/TinyOS/workflows/CodeQL/badge.svg)
 
 # 🧀TinyOS
 A tiny OS running on BOCHS
