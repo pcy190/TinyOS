@@ -29,7 +29,7 @@ make clean
 make restart
 ```
 
-If you have problem compiling GCC m32, install following libs to support gcc -m32 option
+If you have problem with compiling GCC m32, install following libs to support `gcc -m32` option
 ```
 sudo apt-get install build-essential module-assistant  
 sudo apt-get install gcc-multilib g++-multilib 
@@ -49,8 +49,6 @@ If you want to exit the system, input `Ctrl+C` in the command line and input `qu
 - executable file support
 - shell
 
-# 🔨Working
-- fork
 
 # 🏳️‍🌈TODO
 - tube
