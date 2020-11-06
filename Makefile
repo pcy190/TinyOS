@@ -67,8 +67,10 @@ mk_dir:
 fix:
 	- rm *.lock		
 
-bootstrap: build
+install_dependency:
+	- sudo apt install qemu nasm bochs qemu -y
 
+bootstrap: install_dependency build
 
 release: build
 
