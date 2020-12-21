@@ -1,6 +1,8 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  [![Build Status](https://travis-ci.com/pcy190/TinyOS.svg?branch=master)](https://travis-ci.com/pcy190/TinyOS)  ![CodeQL](https://github.com/pcy190/TinyOS/workflows/CodeQL/badge.svg)
 
 # 🧀TinyOS
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_shield)
+
 A tiny OS running on BOCHS
 
 # 🍉Requirement
@@ -58,3 +60,7 @@ Making something is but a lifestyle.
 Simplify on Linux0.11.
 Who knows. 🙂
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpcy190%2FTinyOS?ref=badge_large)
